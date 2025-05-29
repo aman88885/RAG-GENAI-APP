@@ -58,7 +58,7 @@ const IndexNewPDFController = async (req, res) => {
             const chunk = words.slice(i, i + chunkSize).join(' ');
             chunks.push(chunk);
         }
-        console.log(chunks)
+        // console.log(chunks)
         // ========================================================
 
         // TODO4 & TODO5: Convert chunks to embeddings & store in Milvus DB
@@ -66,15 +66,19 @@ const IndexNewPDFController = async (req, res) => {
             const chunk = chunks[index];
 
             try {
+                // Generate vector embedding for the chunk using Google Gemini
                 const chunk_vector_embedding_response = await genAI.models.embedContent({
                     model: DEV_EMBEDDING_MODEL,
                     contents: chunk
                 });
+                console.log(chunk_vector_embedding_response);
                 
+                // Check if the response contains embeddings
                 const chunk_vector_embedding = chunk_vector_embedding_response.embeddings[0].values;
                 console.log(chunk_vector_embedding);
                 console.log(`✅ Generated vector embedding for chunk ${index + 1}`);
 
+                // Insert the chunk and its vector embedding into Milvus Vector DB
                 const milvusResponseForInsert = await milvusClient.insert({
                     collection_name: "RAG_TEXT_EMBEDDING",
                     data: [
