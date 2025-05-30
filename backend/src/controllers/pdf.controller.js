@@ -84,7 +84,8 @@ const IndexNewPDFController = async (req, res) => {
                     data: [
                         {
                             vector_embedding: chunk_vector_embedding,
-                            pdf_text: chunk
+                            pdf_text: chunk,
+                            // pdf_Name: pdfFileName
                         }
                     ]
                 });

@@ -2,29 +2,30 @@ const USERSModel = require('../models/users.model');
 
 const IsUserPresentUsingEmailService = async (email) => {
     try {
-        const emailCheck = await USERSModel.findOne({ email }).exec();
 
-        if (emailCheck) {
+        if (!email || typeof email !== 'string' || !email.includes('@')) {
+            throw new Error('Invalid email format');
+        }
+
+        const user = await USERSModel.findOne({ email }).exec();
+
+        if (user) {
             return {
                 success: true,
-                data: emailCheck
-            };
+                data: user.toObject() // Convert Mongoose document to plain object
+            }
         } else {
-            return {
-                success: false,
-                message: "User not found"
-            };
+            throw new Error(`User with email ${email} not found`);
         }
-    } catch (error) {
-        console.error("Error in IsUserPresentUsingEmailService:", error);
+
+    } catch (err) {
+        console.error(`Error in IsUserPresentUsingEmailService: ${err.message}`, { email });
         return {
             success: false,
-            message: "Error in IsUserPresentUsingEmailService",
-            error
+            error: err.message
         };
     }
-};
-
+}
 module.exports = {
     IsUserPresentUsingEmailService
 };

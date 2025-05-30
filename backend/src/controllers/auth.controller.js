@@ -1,6 +1,7 @@
 const { IsUserPresentUsingEmailService } = require('../services/user.service');
 const { CheckEmailDomainIsPersonalOrNotUtil } = require('../utils/auth.utils');
-const { IsOrganizationPresentUsingOrgDomainService, CreateNewOrganizationService , AuthBodyValidation} = require('../services/organization.service')
+const { IsOrganizationPresentUsingOrgDomainService, CreateNewOrganizationService } = require('../services/organization.service')
+const { AuthBodyValidation } = require('../services/auth_body');
 
 // ==================== Load Modules ====================
 require('dotenv').config();
@@ -22,7 +23,7 @@ const SignupController = async (req, res) => {
         // ========= email checking via IsUserPresentUsingEmailService ========
         const IsUserPresentUsingEmailServiceResponse = await IsUserPresentUsingEmailService(email);
         if (IsUserPresentUsingEmailServiceResponse.success) {
-            const err = new Error("User already exists with this email");
+            const err = new Error(`A user account associated with the provided email address already exists.`);
             err.statusCode = 400;
             throw err;
         }
@@ -35,11 +36,13 @@ const SignupController = async (req, res) => {
         if (CheckEmailDomainIsPersonalOrNotUtilResponse.success) {
             return res.status(201).json({
                 success: true,
-                message: "Email domain is personal"
+                message: `Registration using personal email domains (like ${CheckEmailDomainIsPersonalOrNotUtilResponse.companyName}) is not allowed. Please use a work email.`,
+
             });
         }
 
         else {
+            // If the email domain is not personal, we proceed to create or find the organization
             const organizationDomain = emailDomain; // aman.prajapati@lpu.in --> lpu.in
             const organizationName = organizationDomain.split(".")[0].toUpperCase(); // lpu.in --> LPU
             let organizationId;

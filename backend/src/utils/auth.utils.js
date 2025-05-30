@@ -17,26 +17,18 @@ const CheckEmailDomainIsPersonalOrNotUtil = async (emailDomain) => {
             ['hey.com', 'Hey'],
             ['hushmail.com', 'Hushmail'],
             ['lycos.com', 'Lycos'],
+            ['daum.net', 'Daum'],
             ['inbox.com', 'Inbox'],
             ['mail.ru', 'Mail.ru'],
             ['rediffmail.com', 'Rediffmail'],
             ['naver.com', 'Naver'],
-            ['daum.net', 'Daum'],
             ['seznam.cz', 'Seznam'],
-
-            // Disposable / Temporary Email Providers
-            ['mailinator.com', 'Mailinator'],
-            ['10minutemail.com', '10 Minute Mail'],
-            ['guerrillamail.com', 'Guerrilla Mail'],
-            ['maildrop.cc', 'Maildrop'],
-            ['trashmail.com', 'TrashMail'],
-            ['tempmail.com', 'Temp Mail']
         ]);
 
         if (personalEmailDomainsMap.has(emailDomain)) {
             return {
                 success: true,
-                message: "Email domain is personal",
+                message: `The domain "${emailDomain}" is identified as a personal email provider (${personalEmailDomainsMap.get(emailDomain)}).`,
                 companyName: personalEmailDomainsMap.get(emailDomain)
             };
         } else {
@@ -56,4 +48,4 @@ const CheckEmailDomainIsPersonalOrNotUtil = async (emailDomain) => {
     }
 };
 
-module.exports = {CheckEmailDomainIsPersonalOrNotUtil};
+module.exports = { CheckEmailDomainIsPersonalOrNotUtil };
