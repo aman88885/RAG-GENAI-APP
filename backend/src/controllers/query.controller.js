@@ -1,6 +1,6 @@
+// controllers/query.controller.js
 require('dotenv').config();
 const { MilvusClient } = require('@zilliz/milvus2-sdk-node');
-
 
 // Environment variables
 const DEV_GENERATIVE_MODEL = process.env.DEV_GENERATIVE_MODEL;
@@ -33,42 +33,63 @@ const milvusClient = new MilvusClient({
 const QueryController = async (req, res) => {
     try {
         console.log('Request received to query the vector database');
+        
+        // Extract UUID from URL parameters
+        const { uuid } = req.params;
         const { query } = req.body;
 
         // Validate input
+        if (!uuid || typeof uuid !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid PDF UUID is required in the URL'
+            });
+        }
+
         if (!query || typeof query !== 'string') {
             return res.status(400).json({
                 success: false,
-                message: 'Valid query is required'
+                message: 'Valid query is required in request body'
             });
         }
+
+        console.log('PDF UUID:', uuid);
         console.log('Received query:', query);
 
         // Step 1: Convert the query into vector embedding using Gemini
         const modell = genAI.getGenerativeModel({ model: DEV_EMBEDDING_MODEL });
         const embeddingResult = await modell.embedContent(query);
-
         const query_vector_embedding = embeddingResult.embedding.values;
-        // console.log(query_vector_embedding);
+        console.log('✅ Query vector embedding generated');
 
-        // Step 2: Search Milvus vector database for relevant chunks
+        // Step 2: Search Milvus vector database for relevant chunks (filtered by UUID)
         const milvusResponseForQuery = await milvusClient.search({
             collection_name: 'RAG_TEXT_EMBEDDING',
             data: query_vector_embedding,
             limit: 5,
-
+            // Filter by PDF UUID to only search within specific PDF
+            filter: `pdf_uuid == "${uuid}"`
         });
 
         if (!milvusResponseForQuery.results || milvusResponseForQuery.results.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'No relevant chunks found in the vector database'
+                message: 'No relevant chunks found for this PDF. Please check if the UUID is correct or if the PDF was properly indexed.'
             });
         }
 
-        const relevant_text_from_similarity_search = milvusResponseForQuery.results.map((elem) => elem.pdf_text);
+        console.log(`✅ Found ${milvusResponseForQuery.results.length} relevant chunks`);
+
+        // Extract relevant text and metadata
+        const relevant_chunks = milvusResponseForQuery.results.map((elem) => ({
+            text: elem.pdf_text,
+            score: elem.score,
+            chunk_index: elem.chunk_index || 0,
+            pdf_name: elem.pdf_name || 'Unknown'
+        }));
+
+        const relevant_text_from_similarity_search = relevant_chunks.map(chunk => chunk.text);
         
-        // Use Gemini for both embedding AND generation
         // Step 3: Generate an answer based on the context and query
         const model = genAI.getGenerativeModel({ model: DEV_GENERATIVE_MODEL });
 
@@ -78,9 +99,14 @@ const QueryController = async (req, res) => {
                     role: 'user',
                     parts: [
                         {
-                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot help you with that based on the given information."
-                            Context: ${relevant_text_from_similarity_search.join('\n\n')}
-                            Query: ${query}`
+                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context from a specific PDF document. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot find the answer to your question in this document."
+
+Context from PDF:
+${relevant_text_from_similarity_search.join('\n\n')}
+
+User Query: ${query}
+
+Please provide a comprehensive answer based only on the information available in the context above.`
                         }
                     ]
                 }
@@ -88,20 +114,28 @@ const QueryController = async (req, res) => {
         });
 
         const answer = result.response.text();
-        // console.log('Generated answer:', answer);
+        console.log('✅ Generated answer for PDF UUID:', uuid);
 
-        // Step 4: Return the answer
+        // Step 4: Return the answer with metadata
         res.status(200).json({
             success: true,
+            pdf_uuid: uuid,
+            pdf_name: relevant_chunks[0]?.pdf_name || 'Unknown',
+            query: query,
             answer,
             context_chunks_used: relevant_text_from_similarity_search.length,
-            similarity_scores: milvusResponseForQuery.results.map(r => r.score)
+            similarity_scores: milvusResponseForQuery.results.map(r => r.score),
+            chunks_metadata: relevant_chunks.map(chunk => ({
+                chunk_index: chunk.chunk_index,
+                similarity_score: chunk.score
+            }))
         });
 
     } catch (error) {
         console.error('Error in QueryController:', error.message);
         console.error('Full error:', error);
 
+        // Handle specific error types
         if (error.message.includes('Embedding') || error.message.includes('Text generation')) {
             return res.status(500).json({
                 success: false,
@@ -116,6 +150,13 @@ const QueryController = async (req, res) => {
             });
         }
 
+        if (error.message.includes('filter')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid UUID format or PDF not found: ' + error.message
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'Internal server error: ' + error.message
@@ -123,4 +164,62 @@ const QueryController = async (req, res) => {
     }
 };
 
-module.exports = { QueryController };
+// Optional: Controller to get PDF metadata by UUID
+const GetPDFInfoController = async (req, res) => {
+    try {
+        const { uuid } = req.params;
+
+        if (!uuid || typeof uuid !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid PDF UUID is required'
+            });
+        }
+
+        console.log('Getting PDF info for UUID:', uuid);
+
+        // Query to get PDF metadata
+        const milvusResponse = await milvusClient.query({
+            collection_name: 'RAG_TEXT_EMBEDDING',
+            filter: `pdf_uuid == "${uuid}"`,
+            output_fields: ['pdf_name', 'pdf_uuid', 'created_at', 'chunk_index'],
+            limit: 1
+        });
+
+        if (!milvusResponse.data || milvusResponse.data.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'PDF not found with the provided UUID'
+            });
+        }
+
+        // Count total chunks for this PDF
+        const countResponse = await milvusClient.query({
+            collection_name: 'RAG_TEXT_EMBEDDING',
+            filter: `pdf_uuid == "${uuid}"`,
+            output_fields: ['chunk_index']
+        });
+
+        const pdfInfo = milvusResponse.data[0];
+        res.status(200).json({
+            success: true,
+            pdf_uuid: uuid,
+            pdf_name: pdfInfo.pdf_name,
+            created_at: pdfInfo.created_at,
+            total_chunks: countResponse.data.length,
+            chat_endpoint: `http://localhost:4000/api/v1/pdf/query/ask/${uuid}`
+        });
+
+    } catch (error) {
+        console.error('Error in GetPDFInfoController:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving PDF information: ' + error.message
+        });
+    }
+};
+
+module.exports = { 
+    QueryController,
+    GetPDFInfoController 
+};

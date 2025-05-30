@@ -4,6 +4,7 @@ const multerMiddleware = require('./../../middlewares/multer.middleware');
 
 const pdfRouter = express.Router();
 
-pdfRouter.post('/new',multerMiddleware,IndexNewPDFController);
+// POST /api/v1/pdf/indexing/new
+pdfRouter.post('/new', multerMiddleware, IndexNewPDFController);
 
 module.exports = pdfRouter;

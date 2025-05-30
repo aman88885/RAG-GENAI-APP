@@ -1,6 +1,8 @@
+// controllers/pdf.controller.js
 require('dotenv').config();
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
+const { v4: uuidv4 } = require('uuid'); 
 
 // =================== Milvus Zilliz ================== 
 const { MilvusClient } = require("@zilliz/milvus2-sdk-node");
@@ -31,6 +33,10 @@ const IndexNewPDFController = async (req, res) => {
         //TODO1: Get the file path and file name from the request
         const pdfFilePath = req.file.path; // uploads/pdfs/yourfile.pdf
         const pdfFileName = req.file.filename; // yourfile.pdf
+        
+        // Generate unique UUID for this PDF
+        const pdfUuid = uuidv4();
+        console.log(`📋 Generated UUID for PDF: ${pdfUuid}`);
         // ======================================================
 
         //TODO2: Convert entire pdf into text (pdf-parse)
@@ -40,7 +46,7 @@ const IndexNewPDFController = async (req, res) => {
         try {
             const pdfData = await pdfParse(pdfFile);
             pdfText = pdfData.text; // Extracted text from PDF
-            console.log(pdfText);
+            console.log("✅ PDF text extracted successfully");
         } catch (error) {
             console.error("⚠️ PDF parsing failed:", error);
             return res.status(400).json({
@@ -51,17 +57,18 @@ const IndexNewPDFController = async (req, res) => {
         // ======================================================
 
         //TODO3: Convert the text into chunks
-        const words = pdfText.split(/\s+/); // Split text into words like "Hello world! This is a aman." -> ["Hello", "world!", "This", "is", "a", "aman."]
+        const words = pdfText.split(/\s+/); // Split text into words
         const chunkSize = 1000; // Define the chunk size
         const chunks = [];
         for (let i = 0; i < words.length; i += chunkSize) {
             const chunk = words.slice(i, i + chunkSize).join(' ');
             chunks.push(chunk);
         }
-        // console.log(chunks)
+        console.log(`📝 Created ${chunks.length} chunks from PDF`);
         // ========================================================
 
         // TODO4 & TODO5: Convert chunks to embeddings & store in Milvus DB
+        let successfulChunks = 0;
         for (let index = 0; index < chunks.length; index++) {
             const chunk = chunks[index];
 
@@ -71,11 +78,9 @@ const IndexNewPDFController = async (req, res) => {
                     model: DEV_EMBEDDING_MODEL,
                     contents: chunk
                 });
-                console.log(chunk_vector_embedding_response);
                 
                 // Check if the response contains embeddings
                 const chunk_vector_embedding = chunk_vector_embedding_response.embeddings[0].values;
-                console.log(chunk_vector_embedding);
                 console.log(`✅ Generated vector embedding for chunk ${index + 1}`);
 
                 // Insert the chunk and its vector embedding into Milvus Vector DB
@@ -85,13 +90,17 @@ const IndexNewPDFController = async (req, res) => {
                         {
                             vector_embedding: chunk_vector_embedding,
                             pdf_text: chunk,
-                            // pdf_Name: pdfFileName
+                            pdf_uuid: pdfUuid, // Add UUID to each chunk
+                            pdf_name: pdfFileName, // Add PDF name for reference
+                            chunk_index: index, // Add chunk index for ordering
+                            created_at: new Date().toISOString() // Add timestamp
                         }
                     ]
                 });
 
                 if (milvusResponseForInsert.insert_cnt == 1) {
                     console.log(`✅ Chunk no. ${index + 1} is stored in Milvus Vector DB successfully`);
+                    successfulChunks++;
                 } else {
                     console.log(`❌ Chunk no. ${index + 1} failed to store in Milvus Vector DB`);
                 }
@@ -111,9 +120,16 @@ const IndexNewPDFController = async (req, res) => {
         // ================================================================
 
         console.log(`📄 PDF with name ${pdfFileName} is indexed successfully!`);
+        console.log(`📊 Total chunks processed: ${chunks.length}, Successful: ${successfulChunks}`);
+        
         res.status(201).json({
             success: true,
             message: "PDF is indexed in AI system",
+            uuid: pdfUuid,
+            pdf_name: pdfFileName,
+            total_chunks: chunks.length,
+            successful_chunks: successfulChunks,
+            chat_endpoint: `http://localhost:4000/api/v1/pdf/query/ask/${pdfUuid}`
         });
 
     } catch (error) {

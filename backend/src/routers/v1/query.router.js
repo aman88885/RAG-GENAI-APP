@@ -1,9 +1,13 @@
 const express = require('express');
-const { QueryController } = require('./../../controllers/query.controller');
-
+const { QueryController, GetPDFInfoController } = require('./../../controllers/query.controller');
 
 const queryRouter = express.Router();
 
-queryRouter.get('/ask',QueryController);
+// POST /api/v1/pdf/query/ask/:uuid
+queryRouter.post('/ask/:uuid', QueryController);
+
+// Optional: GET PDF info by UUID
+// GET /api/v1/pdf/query/info/:uuid
+queryRouter.get('/info/:uuid', GetPDFInfoController);
 
 module.exports = queryRouter;
