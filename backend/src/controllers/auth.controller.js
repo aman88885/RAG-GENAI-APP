@@ -1,84 +1,140 @@
 const { IsUserPresentUsingEmailService } = require('../services/user.service');
 const { CheckEmailDomainIsPersonalOrNotUtil } = require('../utils/auth.utils');
-const { IsOrganizationPresentUsingOrgDomainService, CreateNewOrganizationService } = require('../services/organization.service')
+const { IsOrganizationPresentUsingOrgDomainService, CreateNewOrganizationService } = require('../services/organization.service');
 const { AuthBodyValidation } = require('../services/auth_body');
-
-// ==================== Load Modules ====================
-require('dotenv').config();
-const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
-const jwt = require('jsonwebtoken');
+const { generateToken } = require('../services/jwt.service');
 const bcrypt = require('bcrypt');
-// =====================================================
+const USERSModel = require('../models/users.model');
+
+require('dotenv').config();
 
 const SignupController = async (req, res) => {
     try {
-
-        const { fullName, email, password } = req.body;
-
-        // ======= Validation ======
-        await AuthBodyValidation(fullName, email, password);
-        // ========================= 
-
-
-        // ========= email checking via IsUserPresentUsingEmailService ========
-        const IsUserPresentUsingEmailServiceResponse = await IsUserPresentUsingEmailService(email);
-        if (IsUserPresentUsingEmailServiceResponse.success) {
-            const err = new Error(`A user account associated with the provided email address already exists.`);
-            err.statusCode = 400;
-            throw err;
-        }
-        // ====================================================================
-
-
-        // ======== Check if email domain is personal or not || CreateNewOrganizationService ========
-        const emailDomain = email.split("@")[1]; // amanprajapati3205@gmail.com --> gmail.com
-        const CheckEmailDomainIsPersonalOrNotUtilResponse = await CheckEmailDomainIsPersonalOrNotUtil(emailDomain);
-        if (CheckEmailDomainIsPersonalOrNotUtilResponse.success) {
-            return res.status(201).json({
-                success: true,
-                message: `Registration using personal email domains (like ${CheckEmailDomainIsPersonalOrNotUtilResponse.companyName}) is not allowed. Please use a work email.`,
-
+        // Validate request body
+        const { error, value } = AuthBodyValidation.validate(req.body);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: `Validation error: ${error.details[0].message}`
             });
         }
 
-        else {
-            // If the email domain is not personal, we proceed to create or find the organization
-            const organizationDomain = emailDomain; // aman.prajapati@lpu.in --> lpu.in
-            const organizationName = organizationDomain.split(".")[0].toUpperCase(); // lpu.in --> LPU
-            let organizationId;
-            let organizationRole = "ORG_MEMBER";
+        const { username, email, password } = value;
 
-            const IsOrganizationPresentUsingOrgDomainServiceResponse = await IsOrganizationPresentUsingOrgDomainService(organizationDomain);
-            if (IsOrganizationPresentUsingOrgDomainServiceResponse.success) {
-                organizationId = IsOrganizationPresentUsingOrgDomainServiceResponse.data._id;
-            } else {
-                const CreateNewOrganizationServiceResponse = await CreateNewOrganizationService(organizationDomain, organizationName);
-                if (!CreateNewOrganizationServiceResponse.success) {
-                    const err = new Error(`Unable to create organization for domain ${organizationDomain} and name ${organizationName}`);
-                    err.statusCode = 500;
-                    throw err;
-                }
-
-                organizationId = CreateNewOrganizationServiceResponse.data._id;
-                organizationRole = "ORG_ADMIN";
-            }
+        // Check if user already exists
+        const existingUser = await IsUserPresentUsingEmailService(email);
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: 'User with this email already exists'
+            });
         }
-        // =========================================================================
 
+        // Check if email domain is valid (non-personal)
+        const isPersonalEmail = await CheckEmailDomainIsPersonalOrNotUtil(email);
+        if (isPersonalEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please use a professional email address'
+            });
+        }
 
+        // Check or create organization
+        const domain = email.split('@')[1];
+        let organization = await IsOrganizationPresentUsingOrgDomainService(domain);
+        if (!organization) {
+            organization = await CreateNewOrganizationService({ domain });
+        }
 
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+        // Create new user
+        const newUser = await USERSModel.create({
+            username,
+            email,
+            password: hashedPassword,
+            role: 'user', // Explicitly set to user
+            isActive: true
+        });
+
+        // Generate JWT
+        const token = generateToken(newUser);
+
+        return res.status(201).json({
+            success: true,
+            message: 'User registered successfully',
+            token,
+            user: {
+                userId: newUser._id,
+                username: newUser.username,
+                email: newUser.email,
+                role: newUser.role
+            }
+        });
 
     } catch (error) {
-
+        console.error('Error in SignupController:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: `Internal server error: ${error.message}`
+        });
     }
 };
 
 const SigninController = async (req, res) => {
     try {
+        // Validate request body
+        const { error, value } = AuthBodyValidation.validate(req.body);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: `Validation error: ${error.details[0].message}`
+            });
+        }
+
+        const { email, password } = value;
+
+        // Find user by email (select password explicitly)
+        const user = await USERSModel.findOne({ email }).select('+password');
+        if (!user || !user.isActive) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or account is deactivated'
+            });
+        }
+
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid password'
+            });
+        }
+
+        // Generate JWT
+        const token = generateToken(user);
+
+        return res.status(200).json({
+            success: true,
+            message: 'User signed in successfully',
+            token,
+            user: {
+                userId: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
 
     } catch (error) {
-
+        console.error('Error in SigninController:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: `Internal server error: ${error.message}`
+        });
     }
 };
 

@@ -99,14 +99,7 @@ const QueryController = async (req, res) => {
                     role: 'user',
                     parts: [
                         {
-                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context from a specific PDF document. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot find the answer to your question in this document."
-
-Context from PDF:
-${relevant_text_from_similarity_search.join('\n\n')}
-
-User Query: ${query}
-
-Please provide a comprehensive answer based only on the information available in the context above.`
+                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context from a specific PDF document. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot find the answer to your question in this document." Context from PDF: ${relevant_text_from_similarity_search.join('\n\n')} User Query: ${query} Please provide a comprehensive answer based only on the information available in the context above.`
                         }
                     ]
                 }

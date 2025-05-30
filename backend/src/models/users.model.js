@@ -1,33 +1,49 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
-    fullName : {
-        type : String,
-        required : true
+    username: {
+        type: String,
+        required: [true, "Username is required"],
+        trim: true,
+        minlength: [3, "Username must be at least 3 characters long"],
+        maxlength: [50, "Username cannot exceed 50 characters"],
+        unique: true
     },
-    email : {
-        type : String,
-        required : true,
-        unique : true
+    email: {
+        type: String,
+        required: [true, "Email is required"],
+        trim: true,
+        lowercase: true,
+        unique: true,
+        match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"]
     },
-    password : {
-        type : String,
-        required : true
+    password: {
+        type: String,
+        required: [true, "Password is required"],
+        minlength: [6, "Password must be at least 6 characters long"],
+        select: false // Don't return password by default in queries
     },
-    organizationId : {
-        type : mongoose.Schema.Types.ObjectId, //MSTO ID
-        ref : 'organizations'
+    role: {
+        type: String,
+        enum: ["user"], // Only allow "user" role
+        default: "user"
     },
-    role : {
-        type : String,
-        default : "ORG_MEMBER",
-        enum : ["ORG_ADMIN", "ORG_MEMBER"]
+    isActive: {
+        type: Boolean,
+        default: true
     },
-    profilePicture : {
-        type : String
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
-})
+}, {
+    timestamps: true // Automatically manages createdAt and updatedAt
+});
 
-const USERSModel = mongoose.model("users", UserSchema)
+const USERSModel = mongoose.model("users", UserSchema);
 
-module.exports = USERSModel
+module.exports = USERSModel;
