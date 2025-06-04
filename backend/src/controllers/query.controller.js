@@ -1,6 +1,7 @@
 // controllers/query.controller.js
 require('dotenv').config();
 const { MilvusClient } = require('@zilliz/milvus2-sdk-node');
+const { PDFSModel } = require('../models/pdfs.model');
 
 // Environment variables
 const DEV_GENERATIVE_MODEL = process.env.DEV_GENERATIVE_MODEL;
@@ -33,7 +34,7 @@ const milvusClient = new MilvusClient({
 const QueryController = async (req, res) => {
     try {
         console.log('Request received to query the vector database');
-        
+
         // Extract UUID from URL parameters
         const { uuid } = req.params;
         const { query } = req.body;
@@ -56,16 +57,25 @@ const QueryController = async (req, res) => {
         console.log('PDF UUID:', uuid);
         console.log('Received query:', query);
 
+        const pdfRecord = await PDFSModel.findOne({ uuid }).select('name page_count total_chunks successful_chunks createdAt');
+        if (!pdfRecord) {
+            return res.status(404).json({ success: false, message: 'PDF with this UUID not found in database' });
+        }
+
         // Step 1: Convert the query into vector embedding using Gemini
-        const modell = genAI.getGenerativeModel({ model: DEV_EMBEDDING_MODEL });
-        const embeddingResult = await modell.embedContent(query);
+        const embeddingModel = genAI.getGenerativeModel(
+            {
+                model: DEV_EMBEDDING_MODEL
+            }
+        );
+        const embeddingResult = await embeddingModel.embedContent(query);
         const query_vector_embedding = embeddingResult.embedding.values;
         console.log('✅ Query vector embedding generated');
 
         // Step 2: Search Milvus vector database for relevant chunks (filtered by UUID)
         const milvusResponseForQuery = await milvusClient.search({
             collection_name: 'RAG_TEXT_EMBEDDING',
-            data: query_vector_embedding,
+            data: [query_vector_embedding],
             limit: 5,
             // Filter by PDF UUID to only search within specific PDF
             filter: `pdf_uuid == "${uuid}"`
@@ -89,11 +99,11 @@ const QueryController = async (req, res) => {
         }));
 
         const relevant_text_from_similarity_search = relevant_chunks.map(chunk => chunk.text);
-        
-        // Step 3: Generate an answer based on the context and query
-        const model = genAI.getGenerativeModel({ model: DEV_GENERATIVE_MODEL });
 
-        const result = await model.generateContent({
+        // Step 3: Generate an answer based on the context and query
+        const generativeModel = genAI.getGenerativeModel({ model: DEV_GENERATIVE_MODEL });
+
+        const result = await generativeModel.generateContent({
             contents: [
                 {
                     role: 'user',
@@ -211,8 +221,35 @@ const GetPDFInfoController = async (req, res) => {
         });
     }
 };
+const ListPDFsController = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const limit = parseInt(req.query.limit) || 10;
+        const page = parseInt(req.query.page) || 1;
 
-module.exports = { 
+        const pdfs = await PDFSModel.findByUser(userId, {
+            sort: { createdAt: -1 },
+            limit,
+            skip: (page - 1) * limit
+        });
+
+        res.status(200).json({
+            success: true,
+            total: pdfs.length,
+            pdfs
+        });
+
+    } catch (error) {
+        console.error('Error in ListPDFsController:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to list PDFs: ' + error.message
+        });
+    }
+};
+
+module.exports = {
     QueryController,
-    GetPDFInfoController 
+    GetPDFInfoController,
+    ListPDFsController
 };

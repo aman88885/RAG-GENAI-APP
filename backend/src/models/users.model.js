@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
-    username: {
+    fullName: {
         type: String,
-        required: [true, "Username is required"],
+        required: [true, "Full Name is required"],
         trim: true,
-        minlength: [3, "Username must be at least 3 characters long"],
-        maxlength: [50, "Username cannot exceed 50 characters"],
+        minlength: [3, "Full Name must be at least 3 characters long"],
+        maxlength: [50, "Full Name cannot exceed 50 characters"],
         unique: true
     },
     email: {
