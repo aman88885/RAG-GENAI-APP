@@ -13,7 +13,11 @@ if (!JWT_SECRET_KEY) {
 // Helper to generate JWT token
 const generateToken = (userId, email, role) => {
     return jwt.sign(
-        { userId, email, role },
+        {   
+            userId: userId.toString(),
+            email,
+            role 
+        },
         JWT_SECRET_KEY,
         { expiresIn: '24h' }
     );

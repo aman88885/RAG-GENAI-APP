@@ -30,7 +30,7 @@ const DEV_EMBEDDING_MODEL = process.env.DEV_EMBEDDING_MODEL;
 const validateEnvironmentVariables = () => {
     const required = ['MILVUS_ENDPOINT_ADDRESS', 'MILVUS_TOKEN', 'GEMINI_API_KEY', 'DEV_EMBEDDING_MODEL'];
     const missing = required.filter(key => !process.env[key]);
-    
+
     if (missing.length > 0) {
         throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
@@ -40,14 +40,14 @@ const validateEnvironmentVariables = () => {
 const chunkText = (text, chunkSize = 1000, overlap = 100) => {
     const words = text.split(/\s+/);
     const chunks = [];
-    
+
     for (let i = 0; i < words.length; i += (chunkSize - overlap)) {
         const chunk = words.slice(i, i + chunkSize).join(' ');
         if (chunk.trim()) {
             chunks.push(chunk.trim());
         }
     }
-    
+
     return chunks;
 };
 
@@ -60,7 +60,7 @@ const IndexNewPDFController = async (req, res) => {
 
     try {
         console.log("📄 Request received to index new PDF file");
-        
+
         // Validate environment variables
         validateEnvironmentVariables();
 
@@ -75,7 +75,7 @@ const IndexNewPDFController = async (req, res) => {
         pdfFilePath = req.file.path;
         const pdfFileName = req.file.originalname;
         const pdfFileSize = req.file.size;
-        
+
         // Generate unique UUID for this PDF
         const pdfUuid = uuidv4();
         console.log(`📋 Generated UUID for PDF: ${pdfUuid}`);
@@ -86,7 +86,7 @@ const IndexNewPDFController = async (req, res) => {
             original_name: pdfFileName,
             uuid: pdfUuid,
             size: pdfFileSize,
-            uploaded_by: req.user.userId, // From auth middleware
+            uploaded_by: req.userId, // From auth middleware
             indexing_status: 'processing'
         });
 
@@ -105,7 +105,7 @@ const IndexNewPDFController = async (req, res) => {
             console.log(`✅ PDF text extracted successfully (${pageCount} pages)`);
         } catch (error) {
             console.error("⚠️ PDF parsing failed:", error);
-            
+
             // Update PDF record with error
             pdfRecord.indexing_status = 'failed';
             pdfRecord.error_message = 'Failed to parse PDF content';
@@ -161,7 +161,8 @@ const IndexNewPDFController = async (req, res) => {
                     pdf_uuid: pdfUuid,
                     pdf_name: pdfFileName,
                     chunk_index: index,
-                    user_id: req.user.userId.toString(),
+                    user_id: req
+                        .userId.toString(),
                     created_at: new Date().toISOString()
                 };
 
@@ -186,7 +187,7 @@ const IndexNewPDFController = async (req, res) => {
 
             } catch (milvusError) {
                 console.error('❌ Milvus batch insert failed:', milvusError);
-                
+
                 // Try individual inserts as fallback
                 for (const embedding of embeddings) {
                     try {
@@ -207,7 +208,7 @@ const IndexNewPDFController = async (req, res) => {
         pdfRecord.successful_chunks = successfulChunks;
         pdfRecord.is_indexed = successfulChunks > 0;
         pdfRecord.indexing_status = successfulChunks > 0 ? 'completed' : 'failed';
-        
+
         if (successfulChunks === 0) {
             pdfRecord.error_message = 'Failed to index any chunks';
         }
@@ -281,7 +282,7 @@ const IndexNewPDFController = async (req, res) => {
 // Get user's PDFs (owned, shared, and public)
 const GetUserPDFsController = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.userId;
         const { page = 1, limit = 10, status, type = 'all' } = req.query;
 
         let pdfs;
@@ -302,7 +303,7 @@ const GetUserPDFsController = async (req, res) => {
             case 'owned':
                 const ownedQuery = { uploaded_by: userId };
                 if (status) ownedQuery.indexing_status = status;
-                
+
                 pdfs = await PDFSModel.find(ownedQuery, null, options);
                 total = await PDFSModel.countDocuments(ownedQuery);
                 break;
@@ -383,11 +384,11 @@ const GetUserPDFsController = async (req, res) => {
 const GetPDFDetailsController = async (req, res) => {
     try {
         const { uuid } = req.params;
-        const userId = req.user.userId;
+        const userId = req.userId;
 
         // Find PDF
         const pdf = await PDFSModel.findOne({ uuid }).populate('uploaded_by', 'fullName email');
-        
+
         if (!pdf) {
             return res.status(404).json({
                 success: false,
@@ -401,6 +402,22 @@ const GetPDFDetailsController = async (req, res) => {
                 success: false,
                 message: 'You do not have permission to view this PDF'
             });
+        }
+        const isOwner = pdf.uploaded_by._id.toString() === userId.toString();
+        let userPermission = 'none';
+
+        if (isOwner) {
+            userPermission = 'owner';
+        } else if (pdf.is_public) {
+            userPermission = 'read';
+        } else if (pdf.shared_with && pdf.shared_with.length > 0) {
+            // Check if user has specific permission
+            const userShare = pdf.shared_with.find(share =>
+                share.user_id && share.user_id.toString() === userId.toString()
+            );
+            if (userShare) {
+                userPermission = userShare.permission || 'read';
+            }
         }
 
         res.status(200).json({
@@ -423,7 +440,7 @@ const GetPDFDetailsController = async (req, res) => {
                 error_message: pdf.error_message,
                 is_owner: pdf.uploaded_by._id.toString() === userId.toString(),
                 is_public: pdf.is_public,
-                permission: pdf.getUserPermission(userId),
+                permission: userPermission,
                 tags: pdf.tags,
                 description: pdf.description,
                 uploaded_by: {
@@ -451,12 +468,12 @@ const GetPDFDetailsController = async (req, res) => {
 const UpdatePDFController = async (req, res) => {
     try {
         const { uuid } = req.params;
-        const userId = req.user.userId;
+        const userId = req.userId;
         const { name, description, tags, is_public } = req.body;
 
         // Find PDF
         const pdf = await PDFSModel.findOne({ uuid, uploaded_by: userId });
-        
+
         if (!pdf) {
             return res.status(404).json({
                 success: false,
@@ -500,7 +517,7 @@ const UpdatePDFController = async (req, res) => {
 const SharePDFController = async (req, res) => {
     try {
         const { uuid } = req.params;
-        const userId = req.user.userId;
+        const userId = req.userId;
         const { user_email, permission = 'read' } = req.body;
 
         // Validate permission
@@ -529,8 +546,39 @@ const SharePDFController = async (req, res) => {
             });
         }
 
-        // Share PDF
-        await pdf.shareWith(userToShareWith._id, permission);
+        // Check if trying to share with self
+        if (userToShareWith._id.toString() === userId.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot share PDF with yourself'
+            });
+        }
+
+        // Initialize shared_with array if it doesn't exist
+        if (!pdf.shared_with) {
+            pdf.shared_with = [];
+        }
+
+        // Check if already shared with this user
+        const existingShareIndex = pdf.shared_with.findIndex(
+            share => share.user_id && share.user_id.toString() === userToShareWith._id.toString()
+        );
+
+        if (existingShareIndex >= 0) {
+            // Update existing permission
+            pdf.shared_with[existingShareIndex].permission = permission;
+            pdf.shared_with[existingShareIndex].shared_at = new Date();
+        } else {
+            // Add new share
+            pdf.shared_with.push({
+                user_id: userToShareWith._id,
+                permission: permission,
+                shared_at: new Date()
+            });
+        }
+
+        // Save the PDF with updated sharing info
+        await pdf.save();
 
         res.status(200).json({
             success: true,
@@ -546,13 +594,6 @@ const SharePDFController = async (req, res) => {
 
     } catch (error) {
         console.error('Error in SharePDFController:', error);
-        
-        if (error.message.includes('Cannot share PDF with owner')) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot share PDF with yourself'
-            });
-        }
 
         res.status(500).json({
             success: false,
@@ -566,7 +607,7 @@ const SharePDFController = async (req, res) => {
 const RemoveSharingController = async (req, res) => {
     try {
         const { uuid } = req.params;
-        const userId = req.user.userId;
+        const userId = req.userId;
         const { user_email } = req.body;
 
         // Find PDF
@@ -587,8 +628,30 @@ const RemoveSharingController = async (req, res) => {
             });
         }
 
-        // Remove sharing
-        await pdf.removeSharing(userToRemove._id);
+        // Check if shared_with array exists
+        if (!pdf.shared_with || pdf.shared_with.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'PDF is not shared with this user'
+            });
+        }
+
+        // Find and remove the sharing entry
+        const initialLength = pdf.shared_with.length;
+        pdf.shared_with = pdf.shared_with.filter(
+            share => share.user_id && share.user_id.toString() !== userToRemove._id.toString()
+        );
+
+        // Check if anything was actually removed
+        if (pdf.shared_with.length === initialLength) {
+            return res.status(404).json({
+                success: false,
+                message: 'PDF is not shared with this user'
+            });
+        }
+
+        // Save the updated PDF
+        await pdf.save();
 
         res.status(200).json({
             success: true,
@@ -609,7 +672,7 @@ const RemoveSharingController = async (req, res) => {
 const DeletePDFController = async (req, res) => {
     try {
         const { uuid } = req.params;
-        const userId = req.user.userId;
+        const userId = req.userId;
 
         // Find PDF record
         const pdfRecord = await PDFSModel.findOne({ uuid, uploaded_by: userId });
@@ -658,64 +721,65 @@ const DeletePDFController = async (req, res) => {
 // Get PDFs by status (for admin/monitoring)
 const GetPDFsByStatusController = async (req, res) => {
     try {
-        const { status } = req.params;
-        const { page = 1, limit = 10 } = req.query;
-
-        const validStatuses = ['pending', 'processing', 'completed', 'failed'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
-            });
+      const { status } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+  
+      const validStatuses = ['pending', 'processing', 'completed', 'failed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+        });
+      }
+  
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+  
+      const pdfs = await PDFSModel.find({ indexing_status: status }) // or add uploaded_by: req.user.userId
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .populate('uploaded_by', 'fullName email');
+  
+      const total = await PDFSModel.countDocuments({ indexing_status: status }); // same condition here too
+  
+      res.status(200).json({
+        success: true,
+        status,
+        pdfs: pdfs.map(pdf => ({
+          id: pdf._id,
+          uuid: pdf.uuid,
+          name: pdf.name,
+          size_mb: pdf.size_mb,
+          indexing_status: pdf.indexing_status,
+          total_chunks: pdf.total_chunks,
+          successful_chunks: pdf.successful_chunks,
+          error_message: pdf.error_message,
+          created_at: pdf.createdAt,
+          uploaded_by: {
+            name: pdf.uploaded_by.fullName,
+            email: pdf.uploaded_by.email
+          }
+        })),
+        pagination: {
+          current_page: pageNum,
+          total_pages: Math.ceil(total / limitNum),
+          total_pdfs: total,
+          has_next: pageNum * limitNum < total,
+          has_prev: pageNum > 1
         }
-
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        const pdfs = await PDFSModel.findByIndexingStatus(status, {
-            sort: { createdAt: -1 },
-            limit: limitNum,
-            skip: (pageNum - 1) * limitNum
-        }).populate('uploaded_by', 'fullName email');
-
-        const total = await PDFSModel.countDocuments({ indexing_status: status });
-
-        res.status(200).json({
-            success: true,
-            status: status,
-            pdfs: pdfs.map(pdf => ({
-                id: pdf._id,
-                uuid: pdf.uuid,
-                name: pdf.name,
-                size_mb: pdf.size_mb,
-                indexing_status: pdf.indexing_status,
-                total_chunks: pdf.total_chunks,
-                successful_chunks: pdf.successful_chunks,
-                error_message: pdf.error_message,
-                created_at: pdf.createdAt,
-                uploaded_by: {
-                    name: pdf.uploaded_by.fullName,
-                    email: pdf.uploaded_by.email
-                }
-            })),
-            pagination: {
-                current_page: pageNum,
-                total_pages: Math.ceil(total / limitNum),
-                total_pdfs: total,
-                has_next: pageNum * limitNum < total,
-                has_prev: pageNum > 1
-            }
-        });
-
+      });
     } catch (error) {
-        console.error('Error in GetPDFsByStatusController:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching PDFs by status',
-            error: error.message
-        });
+      console.error('Error in GetPDFsByStatusController:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching PDFs by status',
+        error: error.message
+      });
     }
-};
+  };
+  
+
 
 module.exports = {
     IndexNewPDFController,

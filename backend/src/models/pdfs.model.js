@@ -154,5 +154,98 @@ PdfSchema.pre('save', function (next) {
   next();
 });
 
+PdfSchema.methods.getUserPermission = function(userId) {
+  const userIdStr = userId.toString();
+  const ownerIdStr = this.uploaded_by._id ? this.uploaded_by._id.toString() : this.uploaded_by.toString();
+  
+  // Owner has full access
+  if (userIdStr === ownerIdStr) {
+      return 'owner';
+  }
+  
+  // Check if PDF is public
+  if (this.is_public) {
+      return 'read';
+  }
+  
+  // Check shared permissions
+  if (this.shared_with && this.shared_with.length > 0) {
+      const userShare = this.shared_with.find(share => 
+          share.user_id && share.user_id.toString() === userIdStr
+      );
+      if (userShare) {
+          return userShare.permission || 'read';
+      }
+  }
+  
+  return 'none';
+};
+
+// Method to check if user has access
+PdfSchema.methods.hasAccess = function(userId) {
+  const permission = this.getUserPermission(userId);
+  return permission !== 'none';
+};
+
+
+// Add this method to your PDFSModel schema
+
+PdfSchema.methods.shareWith = function(userId, permission = 'read') {
+  // Check if trying to share with owner
+  if (this.uploaded_by.toString() === userId.toString()) {
+      throw new Error('Cannot share PDF with owner');
+  }
+
+  // Initialize shared_with array if it doesn't exist
+  if (!this.shared_with) {
+      this.shared_with = [];
+  }
+
+  // Check if already shared with this user
+  const existingShareIndex = this.shared_with.findIndex(
+      share => share.user_id && share.user_id.toString() === userId.toString()
+  );
+
+  if (existingShareIndex >= 0) {
+      // Update existing permission
+      this.shared_with[existingShareIndex].permission = permission;
+      this.shared_with[existingShareIndex].shared_at = new Date();
+  } else {
+      // Add new share
+      this.shared_with.push({
+          user_id: userId,
+          permission: permission,
+          shared_at: new Date()
+      });
+  }
+
+  // Return the instance so you can chain .save()
+  return this.save();
+};
+
+// Add this method to your PDFSModel schema
+
+PdfSchema.methods.removeSharing = function(userId) {
+  // Check if shared_with array exists
+  if (!this.shared_with || this.shared_with.length === 0) {
+      throw new Error('PDF is not shared with any users');
+  }
+
+  // Find the sharing entry
+  const shareIndex = this.shared_with.findIndex(
+      share => share.user_id && share.user_id.toString() === userId.toString()
+  );
+
+  if (shareIndex === -1) {
+      throw new Error('PDF is not shared with this user');
+  }
+
+  // Remove the sharing entry
+  this.shared_with.splice(shareIndex, 1);
+
+  // Return the instance so you can chain .save()
+  return this.save();
+};
+
 const PDFSModel = mongoose.model("pdfs", PdfSchema);
 module.exports = PDFSModel;

@@ -1,7 +1,7 @@
 // controllers/query.controller.js
 require('dotenv').config();
 const { MilvusClient } = require('@zilliz/milvus2-sdk-node');
-const { PDFSModel } = require('../models/pdfs.model');
+const  PDFSModel  = require('../models/pdfs.model');
 
 // Environment variables
 const DEV_GENERATIVE_MODEL = process.env.DEV_GENERATIVE_MODEL;
@@ -109,7 +109,7 @@ const QueryController = async (req, res) => {
                     role: 'user',
                     parts: [
                         {
-                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context from a specific PDF document. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot find the answer to your question in this document." Context from PDF: ${relevant_text_from_similarity_search.join('\n\n')} User Query: ${query} Please provide a comprehensive answer based only on the information available in the context above.`
+                            text: `You are an intelligent assistant designed to answer queries strictly based on the provided context from a specific PDF document. Do not use external knowledge or make assumptions beyond the context. If the context lacks sufficient information, respond with: "Sorry, I cannot find the answer to your question "${query}" in this document." Context from PDF: ${relevant_text_from_similarity_search.join('\n\n')} User Query: ${query} Please provide a comprehensive answer based only on the information available in the context above.`
                         }
                     ]
                 }
@@ -223,7 +223,15 @@ const GetPDFInfoController = async (req, res) => {
 };
 const ListPDFsController = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const userId = req.userId;  // ← Change this line
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User authentication required'
+            });
+        }
+        
         const limit = parseInt(req.query.limit) || 10;
         const page = parseInt(req.query.page) || 1;
 
