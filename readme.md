@@ -4,7 +4,7 @@ This is a **full-stack Retrieval-Augmented Generation (RAG)** based application 
 
 ## 🚀 Workflow
 
-![RAG Workflow](./426255892-278d4ee1-115d-4564-8955-19bcca4daee3.png)
+![RAG Workflow](/workflow.png)
 
 ---
 
