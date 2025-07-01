@@ -1,5 +1,6 @@
 const express = require('express');
-const { QueryController, GetPDFInfoController, ListPDFsController } = require('./../../controllers/query.controller');
+const { QueryController, GetPDFInfoController } = require('./../../controllers/query.controller');
+// ListPDFsController
 const { AuthMiddleware } = require('../../middlewares/auth.middleware');
 
 const queryRouter = express.Router();
@@ -11,6 +12,6 @@ queryRouter.post('/ask/:uuid',AuthMiddleware, QueryController);
 // GET /api/v1/pdf/query/info/:uuid
 queryRouter.get('/info/:uuid',AuthMiddleware, GetPDFInfoController);
 
-queryRouter.get('/list', AuthMiddleware, ListPDFsController);
+// queryRouter.get('/list', AuthMiddleware, ListPDFsController);
 
 module.exports = queryRouter;
