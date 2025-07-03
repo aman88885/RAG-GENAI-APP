@@ -35,6 +35,65 @@ const PdfSchema = new mongoose.Schema({
     min: [0, "Page count cannot be negative"]
   },
 
+  // =============== CLOUDINARY FIELDS ===============
+  // Storage Configuration
+  storage_type: {
+    type: String,
+    enum: ["local", "cloudinary", "s3"],
+    default: "cloudinary"
+  },
+  
+  // Cloudinary Specific Fields
+  cloudinary_url: {
+    type: String,
+    required: function() {
+      return this.storage_type === 'cloudinary';
+    },
+    validate: {
+      validator: function(v) {
+        // Only validate if storage_type is cloudinary
+        return this.storage_type !== 'cloudinary' || (v && v.length > 0);
+      },
+      message: 'Cloudinary URL is required when storage type is cloudinary'
+    }
+  },
+  cloudinary_public_id: {
+    type: String,
+    required: function() {
+      return this.storage_type === 'cloudinary';
+    },
+    validate: {
+      validator: function(v) {
+        return this.storage_type !== 'cloudinary' || (v && v.length > 0);
+      },
+      message: 'Cloudinary public ID is required when storage type is cloudinary'
+    }
+  },
+  cloudinary_bytes: {
+    type: Number,
+    min: [0, "Cloudinary bytes cannot be negative"]
+  },
+  cloudinary_format: {
+    type: String,
+    default: "pdf"
+  },
+  cloudinary_resource_type: {
+    type: String,
+    default: "raw"
+  },
+  cloudinary_created_at: {
+    type: Date
+  },
+  
+  // Legacy local storage path (for backward compatibility)
+  local_path: {
+    type: String,
+    required: function() {
+      return this.storage_type === 'local';
+    }
+  },
+  // ================================================
+
   // Processing Status
   is_indexed: {
     type: Boolean,
@@ -98,7 +157,7 @@ const PdfSchema = new mongoose.Schema({
     default: false
   },
   shared_with: [{
-    user: {
+    user_id: { // Fixed: was 'user', now 'user_id' to match your methods
       type: mongoose.Schema.Types.ObjectId,
       ref: 'users'
     },
@@ -106,6 +165,10 @@ const PdfSchema = new mongoose.Schema({
       type: String,
       enum: ["read", "write"],
       default: "read"
+    },
+    shared_at: {
+      type: Date,
+      default: Date.now
     }
   }]
 }, {
@@ -118,17 +181,55 @@ const PdfSchema = new mongoose.Schema({
 PdfSchema.index({ uploaded_by: 1, createdAt: -1 });
 PdfSchema.index({ uuid: 1, uploaded_by: 1 });
 PdfSchema.index({ is_indexed: 1, indexing_status: 1 });
+PdfSchema.index({ cloudinary_public_id: 1 }); // New index for Cloudinary queries
+PdfSchema.index({ storage_type: 1 }); // New index for storage type queries
 
 // Virtual for human-readable file size
 PdfSchema.virtual('size_mb').get(function () {
   return (this.size / (1024 * 1024)).toFixed(2);
 });
 
+// =============== NEW CLOUDINARY VIRTUALS ===============
+// Virtual for download URL (works for both local and cloudinary)
+PdfSchema.virtual('download_url').get(function () {
+  if (this.storage_type === 'cloudinary' && this.cloudinary_url) {
+    return this.cloudinary_url;
+  } else if (this.storage_type === 'local' && this.local_path) {
+    return `/api/v1/pdf/download/${this.uuid}`; // Your local download endpoint
+  }
+  return null;
+});
+
+// Virtual to check if file is stored in cloud
+PdfSchema.virtual('is_cloud_stored').get(function () {
+  return this.storage_type === 'cloudinary' || this.storage_type === 's3';
+});
+
+// Virtual for file source info
+PdfSchema.virtual('storage_info').get(function () {
+  if (this.storage_type === 'cloudinary') {
+    return {
+      type: 'cloudinary',
+      url: this.cloudinary_url,
+      public_id: this.cloudinary_public_id,
+      bytes: this.cloudinary_bytes,
+      format: this.cloudinary_format
+    };
+  } else if (this.storage_type === 'local') {
+    return {
+      type: 'local',
+      path: this.local_path
+    };
+  }
+  return { type: this.storage_type };
+});
+// ======================================================
+
 // Instance method: Check if user has access
 PdfSchema.methods.hasAccess = function (userId) {
   if (this.uploaded_by.toString() === userId.toString()) return true;
   if (this.is_public) return true;
-  return this.shared_with.some(entry => entry.user.toString() === userId.toString());
+  return this.shared_with.some(entry => entry.user_id.toString() === userId.toString());
 };
 
 // Static method: Get all PDFs a user can see
@@ -137,7 +238,7 @@ PdfSchema.statics.findByUser = function (userId, options = {}) {
     $or: [
       { uploaded_by: userId },
       { is_public: true },
-      { 'shared_with.user': userId }
+      { 'shared_with.user_id': userId }
     ]
   }, null, options);
 };
@@ -151,9 +252,23 @@ PdfSchema.pre('save', function (next) {
   if (!this.original_name && this.name) {
     this.original_name = this.name;
   }
+  
+  // =============== NEW CLOUDINARY PRE-SAVE LOGIC ===============
+  // Set cloudinary_created_at if cloudinary_url is being set for first time
+  if (this.isModified('cloudinary_url') && this.cloudinary_url && !this.cloudinary_created_at) {
+    this.cloudinary_created_at = new Date();
+  }
+  
+  // Ensure storage_type is set correctly
+  if (this.cloudinary_url && this.cloudinary_public_id && !this.storage_type) {
+    this.storage_type = 'cloudinary';
+  }
+  // =============================================================
+  
   next();
 });
 
+// Get user permission method
 PdfSchema.methods.getUserPermission = function(userId) {
   const userIdStr = userId.toString();
   const ownerIdStr = this.uploaded_by._id ? this.uploaded_by._id.toString() : this.uploaded_by.toString();
@@ -181,15 +296,7 @@ PdfSchema.methods.getUserPermission = function(userId) {
   return 'none';
 };
 
-// Method to check if user has access
-PdfSchema.methods.hasAccess = function(userId) {
-  const permission = this.getUserPermission(userId);
-  return permission !== 'none';
-};
-
-
-// Add this method to your PDFSModel schema
-
+// Share PDF with user
 PdfSchema.methods.shareWith = function(userId, permission = 'read') {
   // Check if trying to share with owner
   if (this.uploaded_by.toString() === userId.toString()) {
@@ -223,8 +330,7 @@ PdfSchema.methods.shareWith = function(userId, permission = 'read') {
   return this.save();
 };
 
-// Add this method to your PDFSModel schema
-
+// Remove sharing with user
 PdfSchema.methods.removeSharing = function(userId) {
   // Check if shared_with array exists
   if (!this.shared_with || this.shared_with.length === 0) {
@@ -246,6 +352,48 @@ PdfSchema.methods.removeSharing = function(userId) {
   // Return the instance so you can chain .save()
   return this.save();
 };
+
+// =============== NEW CLOUDINARY METHODS ===============
+// Method to get secure download URL (for Cloudinary)
+PdfSchema.methods.getSecureDownloadUrl = function() {
+  if (this.storage_type === 'cloudinary' && this.cloudinary_url) {
+    return this.cloudinary_url;
+  }
+  return null;
+};
+
+// Method to check if PDF is stored in cloud
+PdfSchema.methods.isCloudStored = function() {
+  return this.storage_type === 'cloudinary' || this.storage_type === 's3';
+};
+
+// Static method to find PDFs by storage type
+PdfSchema.statics.findByStorageType = function(storageType, options = {}) {
+  return this.find({ storage_type: storageType }, null, options);
+};
+
+// Static method to find PDFs that need migration to cloud
+PdfSchema.statics.findForCloudMigration = function(options = {}) {
+  return this.find({ 
+    storage_type: 'local',
+    is_indexed: true,
+    indexing_status: 'completed'
+  }, null, options);
+};
+
+// Method to update Cloudinary info (useful for migrations)
+PdfSchema.methods.updateCloudinaryInfo = function(cloudinaryResult) {
+  this.storage_type = 'cloudinary';
+  this.cloudinary_url = cloudinaryResult.secure_url;
+  this.cloudinary_public_id = cloudinaryResult.public_id;
+  this.cloudinary_bytes = cloudinaryResult.bytes;
+  this.cloudinary_format = cloudinaryResult.format;
+  this.cloudinary_resource_type = cloudinaryResult.resource_type;
+  this.cloudinary_created_at = new Date(cloudinaryResult.created_at);
+  
+  return this.save();
+};
+// =====================================================
 
 const PDFSModel = mongoose.model("pdfs", PdfSchema);
 module.exports = PDFSModel;

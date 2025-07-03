@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
-
+import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
+import { useToast } from '../hooks/use-toast';
+// console.log("HAHAHA")
 
 // for bolt
 const SignUp = () => {
@@ -11,12 +12,13 @@ const SignUp = () => {
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast(); // Add this line - it was missing!
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Full Name validation
     if (!formData.fullName) {
@@ -47,70 +49,72 @@ const SignUp = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setErrors({}); // Clear previous errors
-    
+
     try {
-      console.log('Attempting to sign up with:', { 
-        fullName: formData.fullName, 
-        email: formData.email 
-      });
-      
       const response = await fetch('http://localhost:4000/api/v1/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
-        credentials: 'include', // Include cookies if your backend uses them
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          password: formData.password
-        }),
+        body: JSON.stringify(formData),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = 'Sign up failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          errorMessage = `Server error (${response.status})`;
-        }
-        throw new Error(errorMessage);
-      }
-
       const data = await response.json();
-      console.log('Sign up successful:', data);
 
-      // Store user data/token if needed
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
+      // if (response.ok) {
+      //   toast({
+      //     title: "Success!",
+      //     description: "Your account has been created successfully.",
+      //   });
 
-      // Redirect to dashboard
-      navigate('/dashboard');
+      //   // Store user data/token if your backend returns them
+      //   if (data.token) {
+      //     localStorage.setItem('token', data.token);
+      //   }
+      //   if (data.user) {
+      //     localStorage.setItem('user', JSON.stringify(data.user));
+      //   }
 
-    } catch (error) {
-      console.error('Sign up error:', error);
+      //   // window.location.reload();
+
+      //   // Redirect to dashboard on successful sign up
+      //   navigate('/dashboard');
+      // } 
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Your account has been created successfully.",
+        });
       
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        setErrors({ general: 'Unable to connect to server. Please check if the backend is running on http://localhost:4000' });
-      } else {
-        setErrors({ general: error instanceof Error ? error.message : 'Network error. Please try again.' });
+        // Store user data/token if your backend returns them
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+      
+        // Force a full page navigation to ensure auth state is reinitialized
+        window.location.href = '/dashboard';
       }
+      else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to connect to server. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Sign up error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -119,13 +123,12 @@ const SignUp = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
-
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Side - Illustration */}
@@ -139,11 +142,11 @@ const SignUp = () => {
               Join ChatDoc Today
             </h2>
             <p className="text-gray-600 text-lg leading-relaxed">
-              Start your journey with intelligent document conversations. 
+              Start your journey with intelligent document conversations.
               Upload PDFs and get instant insights with AI-powered chat.
             </p>
           </div>
-          
+
           {/* Illustration Elements */}
           <div className="relative space-y-4">
             <div className="bg-white rounded-xl p-4 shadow-lg transform -rotate-2 hover:rotate-0 transition-transform duration-300">
@@ -157,7 +160,7 @@ const SignUp = () => {
                 <div className="h-1.5 bg-blue-200 rounded w-full"></div>
               </div>
             </div>
-            
+
             <div className="bg-blue-600 text-white rounded-xl p-4 shadow-lg transform rotate-2 hover:rotate-0 transition-transform duration-300 ml-8">
               <div className="flex items-start space-x-2">
                 <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0"></div>
@@ -177,14 +180,14 @@ const SignUp = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Link>
-            
+
             <div className="flex items-center space-x-3 mb-6">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <FileText className="h-6 w-6 text-white" />
               </div>
               <span className="text-2xl font-bold text-black">ChatDoc</span>
             </div>
-            
+
             <h1 className="text-3xl font-bold text-black mb-2">Create your account</h1>
             <p className="text-gray-600">Get started with ChatDoc today</p>
           </div>
@@ -212,9 +215,8 @@ const SignUp = () => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
-                    errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                  }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}
                   placeholder="Enter your full name"
                 />
               </div>
@@ -238,9 +240,8 @@ const SignUp = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
-                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                  }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -264,9 +265,8 @@ const SignUp = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
-                    errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                  }`}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}
                   placeholder="Create a password"
                 />
                 <button

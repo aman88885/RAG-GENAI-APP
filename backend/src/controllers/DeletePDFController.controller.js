@@ -1,7 +1,8 @@
 require('dotenv').config();
 const PDFSModel = require('../models/pdfs.model');
 const USERSModel = require('../models/users.model');
-
+const { validateEnvironmentVariables } = require('../utils/validateEnvironmentVariables.utils');
+const { deletePDFFromCloudinary } = require('../config/cloudinary.config');
 
 
 // =================== Milvus Zilliz ==================
@@ -88,6 +89,14 @@ const DeletePDFController = async (req, res) => {
             console.warn("⚠️ Continuing with database deletion despite Milvus error");
         }
 
+
+          // Delete from Cloudinary
+          const cloudinaryResult = await deletePDFFromCloudinary(pdfRecord.cloudinary_public_id);
+        
+          if (!cloudinaryResult.success) {
+              console.warn("⚠️ Failed to delete from Cloudinary:", cloudinaryResult.error);
+          }
+
         // Delete PDF record from MongoDB
         await PDFSModel.findByIdAndDelete(pdfRecord._id);
         console.log(`✅ Deleted PDF record from database`);
@@ -104,6 +113,7 @@ const DeletePDFController = async (req, res) => {
                 original_name: pdfRecord.original_name,
                 total_chunks: pdfRecord.total_chunks,
                 deleted_vectors: deletedVectorCount,
+                cloudinary_deleted: cloudinaryResult.success,
                 deleted_at: new Date().toISOString()
             }
         });

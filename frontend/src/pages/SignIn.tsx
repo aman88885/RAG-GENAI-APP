@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
-
+import { useToast } from '../hooks/use-toast';
 const SignIn = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast(); // Add this line - it was missing!
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Please enter a valid email';
     }
 
     // Password validation
@@ -35,49 +36,70 @@ const SignIn = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setErrors({}); // Clear previous errors
-    
+
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Check if user exists in localStorage (from signup)
-      const existingUsers = JSON.parse(localStorage.getItem('chatdoc_users') || '[]');
-      const user = existingUsers.find((u: any) => u.email === formData.email);
-
-      if (!user) {
-        throw new Error('No account found with this email address');
-      }
-
-      if (user.password !== formData.password) {
-        throw new Error('Invalid password');
-      }
-
-      console.log('Sign in successful:', user);
-
-      // Store current user session
-      const sessionData = {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name
+      const response = await fetch('http://localhost:4000/api/v1/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        token: `demo_token_${Date.now()}`,
-        signedInAt: new Date().toISOString()
-      };
+        body: JSON.stringify(formData),
+      });
 
-      localStorage.setItem('chatdoc_session', JSON.stringify(sessionData));
+      const data = await response.json();
 
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // if (response.ok) {
+      //   toast({
+      //     title: "Success!",
+      //     description: "You have been signed in successfully.",
+      //   });
 
+      //   // Store user data/token if your backend returns them
+      //   if (data.token) {
+      //     localStorage.setItem('token', data.token);
+      //   }
+      //   if (data.user) {
+      //     localStorage.setItem('user', JSON.stringify(data.user));
+      //   }
+
+      //   // Redirect to dashboard on successful sign in
+      //   navigate('/dashboard');
+      // } 
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "You have been signed in successfully.",
+        });
+
+        // Store user data/token if your backend returns them
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
+        // Force a full page navigation to ensure auth state is reinitialized
+        window.location.href = '/dashboard';
+      }
+      else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to sign in. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to connect to server. Please try again.",
+        variant: "destructive",
+      });
       console.error('Sign in error:', error);
-      setErrors({ general: error instanceof Error ? error.message : 'Sign in failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -86,13 +108,12 @@ const SignIn = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
-
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Side - Illustration */}
@@ -106,11 +127,11 @@ const SignIn = () => {
               Welcome Back to ChatDoc
             </h2>
             <p className="text-gray-600 text-lg leading-relaxed">
-              Continue your journey of smart document conversations. 
+              Continue your journey of smart document conversations.
               Sign in to access your PDFs and chat history.
             </p>
           </div>
-          
+
           {/* Illustration Elements */}
           <div className="relative">
             <div className="bg-white rounded-xl p-6 shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
@@ -139,14 +160,14 @@ const SignIn = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Link>
-            
+
             <div className="flex items-center space-x-3 mb-6">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <FileText className="h-6 w-6 text-white" />
               </div>
               <span className="text-2xl font-bold text-black">ChatDoc</span>
             </div>
-            
+
             <h1 className="text-3xl font-bold text-black mb-2">Welcome back</h1>
             <p className="text-gray-600">Sign in to your account to continue</p>
           </div>
@@ -180,9 +201,8 @@ const SignIn = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
-                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                  }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -206,9 +226,8 @@ const SignIn = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
-                    errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                  }`}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}
                   placeholder="Enter your password"
                 />
                 <button

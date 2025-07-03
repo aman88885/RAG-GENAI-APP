@@ -11,12 +11,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@cloudflare/ai": "^1.2.2",
-    "@google/genai": "^0.7.0",
     "@google/generative-ai": "^0.24.0",
-    "@xenova/transformers": "^2.17.2",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -27,10 +25,8 @@
     "mongoose": "^8.12.1",
     "multer": "^1.4.5-lts.2",
     "nodemon": "^3.1.9",
-    "openai": "^4.91.1",
     "path": "^0.12.7",
     "pdf-parse": "^1.1.1",
-    "uuid": "^11.1.0",
-    "wrangler": "^4.12.0"
+    "uuid": "^11.1.0"
   }
 }

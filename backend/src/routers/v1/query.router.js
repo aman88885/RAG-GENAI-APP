@@ -1,5 +1,6 @@
 const express = require('express');
-const { QueryController, GetPDFInfoController } = require('./../../controllers/query.controller');
+const { QueryController } = require('./../../controllers/QueryController.controller');
+const { GetPDFInfoController } = require('./../../controllers/GetPDFInfoController.controller');
 // ListPDFsController
 const { AuthMiddleware } = require('../../middlewares/auth.middleware');
 

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, FileText } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import UserProfile from './UserProfile';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   const navItems = ['Home', 'Features', 'Workflow', 'Use Cases', 'FAQs'];
 
@@ -40,20 +43,30 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Section */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link 
-              to="/signin"
-              className="text-black hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-            >
-              Sign In
-            </Link>
-            <Link 
-              to="/signup"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
-            >
-              Sign Up
-            </Link>
+            {!isLoading && (
+              <>
+                {isAuthenticated ? (
+                  <UserProfile />
+                ) : (
+                  <>
+                    <Link 
+                      to="/signin"
+                      className="text-black hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Sign In
+                    </Link>
+                    <Link 
+                      to="/signup"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -81,20 +94,33 @@ const Navbar = () => {
                 </button>
               ))}
               <hr className="my-2 border-gray-200" />
-              <Link 
-                to="/signin"
-                className="block w-full text-left px-3 py-2 text-black hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link 
-                to="/signup"
-                className="block w-full text-left px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign Up
-              </Link>
+              
+              {!isLoading && (
+                <>
+                  {isAuthenticated ? (
+                    <div className="px-3 py-2">
+                      <UserProfile />
+                    </div>
+                  ) : (
+                    <>
+                      <Link 
+                        to="/signin"
+                        className="block w-full text-left px-3 py-2 text-black hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link 
+                        to="/signup"
+                        className="block w-full text-left px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}

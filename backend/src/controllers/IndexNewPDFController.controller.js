@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const PDFSModel = require('../models/pdfs.model');
 const { chunkText } = require('../utils/chunkText.utils');
 const { validateEnvironmentVariables } = require('../utils/validateEnvironmentVariables.utils');
+const { uploadPDFToCloudinary, deletePDFFromCloudinary } = require('../config/cloudinary.config');
 
 // =================== Milvus Zilliz ==================
 const { MilvusClient } = require("@zilliz/milvus2-sdk-node");
@@ -53,6 +54,21 @@ const IndexNewPDFController = async (req, res) => {
         const pdfUuid = uuidv4();
         console.log(`📋 Generated UUID for PDF: ${pdfUuid}`);
 
+        console.log("☁️ Uploading PDF to Cloudinary...");
+        cloudinaryUploadResult = await uploadPDFToCloudinary(pdfFilePath, pdfFileName, req.userId);
+
+        if (!cloudinaryUploadResult.success) {
+            console.error("❌ Cloudinary upload failed:", cloudinaryUploadResult.error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to upload PDF to cloud storage",
+                error: cloudinaryUploadResult.error
+            });
+        }
+
+        console.log(`✅ PDF uploaded to Cloudinary: ${cloudinaryUploadResult.url}`);
+
+
         // Create initial PDF record in database
         pdfRecord = new PDFSModel({
             name: pdfFileName,
@@ -60,7 +76,12 @@ const IndexNewPDFController = async (req, res) => {
             uuid: pdfUuid,
             size: pdfFileSize,
             uploaded_by: req.userId, // From auth middleware
-            indexing_status: 'processing'
+            indexing_status: 'processing',
+            cloudinary_url: cloudinaryUploadResult.url,
+            cloudinary_public_id: cloudinaryUploadResult.public_id,
+            cloudinary_bytes: cloudinaryUploadResult.bytes,
+            cloudinary_format: cloudinaryUploadResult.format,
+            storage_type: 'cloudinary'
         });
 
         await pdfRecord.save();
@@ -84,6 +105,9 @@ const IndexNewPDFController = async (req, res) => {
             pdfRecord.error_message = 'Failed to parse PDF content';
             await pdfRecord.save();
 
+            // Clean up - delete from Cloudinary if parsing failed
+            await deletePDFFromCloudinary(cloudinaryUploadResult.public_id);
+
             return res.status(400).json({
                 success: false,
                 message: "Failed to parse the PDF. Please try uploading a valid PDF file.",
@@ -96,7 +120,7 @@ const IndexNewPDFController = async (req, res) => {
         await pdfRecord.save();
 
         // Validate extracted text
-        if (!pdfText || pdfText.trim().length < 500) { // minimum 50 characters 
+        if (!pdfText || pdfText.trim().length < 2000) { // minimum 50 characters 
             pdfRecord.indexing_status = 'failed';
             pdfRecord.error_message = 'PDF contains insufficient text content';
             await pdfRecord.save();
@@ -136,7 +160,8 @@ const IndexNewPDFController = async (req, res) => {
                     pdf_name: pdfFileName,
                     chunk_index: index,
                     user_id: req.userId.toString(),
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    cloudinary_url: cloudinaryUploadResult.url
                 };
                 // console.log(embeddingData)
 
@@ -197,6 +222,9 @@ const IndexNewPDFController = async (req, res) => {
 
         if (successfulChunks === 0) {
             pdfRecord.error_message = 'Failed to index any chunks';
+
+            // If indexing completely failed, delete from Cloudinary
+            await deletePDFFromCloudinary(cloudinaryUploadResult.public_id);
         }
 
         await pdfRecord.save();
@@ -233,16 +261,30 @@ const IndexNewPDFController = async (req, res) => {
                 total_chunks: chunks.length,
                 successful_chunks: successfulChunks,
                 indexing_status: pdfRecord.indexing_status,
-                indexed_at: pdfRecord.indexed_at
+                indexed_at: pdfRecord.indexed_at,
+                cloudinary_url: cloudinaryUploadResult.url,
+                storage_type: 'cloudinary'
             },
             endpoints: {
                 query: `/api/v1/pdf/ask/${pdfUuid}`,
-                info: `/api/v1/pdf/info/${pdfUuid}`
+                info: `/api/v1/pdf/info/${pdfUuid}`,
+                download: cloudinaryUploadResult.url
             }
         });
 
+        console.log(`📄 PDF indexed successfully: ${pdfFileName} (${pdfUuid})`);
     } catch (error) {
         console.error("🔥 Internal error during PDF indexing:", error);
+
+        // Clean up Cloudinary upload if something went wrong
+        if (cloudinaryUploadResult && cloudinaryUploadResult.success) {
+            try {
+                await deletePDFFromCloudinary(cloudinaryUploadResult.public_id);
+                console.log("🧹 Cleaned up Cloudinary upload due to error");
+            } catch (cleanupError) {
+                console.error("⚠️ Error cleaning up Cloudinary upload:", cleanupError);
+            }
+        }
 
         // Update PDF record with error if it exists
         if (pdfRecord) {

@@ -11,6 +11,7 @@ const { UpdatePDFController } = require('../../controllers/UpdatePDFController.c
 const { SharePDFController } = require('../../controllers/SharePDFController.controller');
 const { RemoveSharingController } = require('../../controllers/RemoveSharingController.controller');
 const { GetPDFsByStatusController } = require('../../controllers/GetPDFsByStatusController.controller');
+const { getPDFDownloadController} = require('../../controllers/GetPDFDownloadController.controller');
 
 const pdfRouter = express.Router();
 
@@ -28,18 +29,26 @@ pdfRouter.delete('/bulk/delete', AuthMiddleware, DeleteMultiplePDFsController);
 // DELETE /api/v1/pdf/user/all - Delete all PDFs for authenticated user
 pdfRouter.delete('/user/all', AuthMiddleware, DeleteAllUserPDFsController);
 
+// GET /api/v1/pdf/user - Get all PDFs for authenticated user
 pdfRouter.get('/user', AuthMiddleware, GetUserPDFsController);
 
+// GET /api/v1/pdf/details/:uuid - Get details of a single PDF by UUID
 pdfRouter.get('/details/:uuid', AuthMiddleware, GetPDFDetailsController);
 
+// PUT /api/v1/pdf/update/:uuid - Update PDF metadata by UUID
 pdfRouter.put('/update/:uuid', AuthMiddleware, UpdatePDFController);
 
+// POST /api/v1/pdf/share/:uuid - Share PDF with another user
 pdfRouter.post('/share/:uuid', AuthMiddleware, SharePDFController);
 
+// POST /api/v1/pdf/remove-sharing/:uuid - Remove sharing of PDF with another user
 pdfRouter.post('/remove-sharing/:uuid', AuthMiddleware, RemoveSharingController);
 
-pdfRouter.delete('/delete/:uuid', AuthMiddleware, DeletePDFController);
-
+// GET /api/v1/pdf/status/:status - Get PDFs by status (e.g., "processing", "completed")
 pdfRouter.get('/status/:status', AuthMiddleware, GetPDFsByStatusController);
+
+// GET /api/v1/pdf/download/:uuid - Download PDF by UUID
+pdfRouter.get('/download/:uuid', AuthMiddleware, getPDFDownloadController);
+
 
 module.exports = pdfRouter;
