@@ -1,11 +1,10 @@
 // controllers/query.controller.js
 require('dotenv').config();
 const { MilvusClient } = require('@zilliz/milvus2-sdk-node');
+const PDFSModel = require('../models/pdfs.model'); // Add this import
 
 const MILVUS_ENDPOINT_ADDRESS = process.env.MILVUS_ENDPOINT_ADDRESS;
 const MILVUS_TOKEN = process.env.MILVUS_TOKEN;
-
-
 
 if (!MILVUS_ENDPOINT_ADDRESS || !MILVUS_TOKEN) {
     console.error('Milvus credentials are missing in .env');
@@ -19,8 +18,7 @@ const milvusClient = new MilvusClient({
     timeout: 60000
 });
 
-
-// Optional: Controller to get PDF metadata by UUID
+// Fixed: Controller to get PDF metadata by UUID
 const GetPDFInfoController = async (req, res) => {
     try {
         const { uuid } = req.params;
@@ -34,36 +32,43 @@ const GetPDFInfoController = async (req, res) => {
 
         console.log('Getting PDF info for UUID:', uuid);
 
-        // Query to get PDF metadata
-        const milvusResponse = await milvusClient.query({
-            collection_name: 'RAG_TEXT_EMBEDDING',
-            filter: `pdf_uuid == "${uuid}"`,
-            output_fields: ['pdf_name', 'pdf_uuid', 'created_at', 'chunk_index'],
-            limit: 1
-        });
+        // Query PDF model to get complete PDF information
+        const pdfRecord = await PDFSModel.findOne({ uuid }).select(
+            'name original_name uuid size page_count total_chunks successful_chunks indexing_status cloudinary_url storage_type createdAt'
+        );
 
-        if (!milvusResponse.data || milvusResponse.data.length === 0) {
+        if (!pdfRecord) {
             return res.status(404).json({
                 success: false,
                 message: 'PDF not found with the provided UUID'
             });
         }
 
-        // Count total chunks for this PDF
-        const countResponse = await milvusClient.query({
-            collection_name: 'RAG_TEXT_EMBEDDING',
-            filter: `pdf_uuid == "${uuid}"`,
-            output_fields: ['chunk_index']
-        });
+        // Check if PDF is properly indexed
+        if (pdfRecord.indexing_status !== 'completed') {
+            return res.status(400).json({
+                success: false,
+                message: `PDF indexing is ${pdfRecord.indexing_status}. Please wait for indexing to complete.`
+            });
+        }
 
-        const pdfInfo = milvusResponse.data[0];
+        // Return data in the format expected by frontend
         res.status(200).json({
             success: true,
-            pdf_uuid: uuid,
-            pdf_name: pdfInfo.pdf_name,
-            created_at: pdfInfo.created_at,
-            total_chunks: countResponse.data.length,
-            chat_endpoint: `http://localhost:4000/api/v1/pdf/query/ask/${uuid}`
+            pdf: {
+                id: pdfRecord._id,
+                uuid: pdfRecord.uuid,
+                name: pdfRecord.name,
+                original_name: pdfRecord.original_name,
+                size_mb: (pdfRecord.size / (1024 * 1024)).toFixed(2),
+                page_count: pdfRecord.page_count,
+                total_chunks: pdfRecord.total_chunks,
+                successful_chunks: pdfRecord.successful_chunks,
+                indexing_status: pdfRecord.indexing_status,
+                cloudinary_url: pdfRecord.cloudinary_url,
+                storage_type: pdfRecord.storage_type,
+                created_at: pdfRecord.createdAt
+            }
         });
 
     } catch (error) {
@@ -77,4 +82,4 @@ const GetPDFInfoController = async (req, res) => {
 
 module.exports = {
     GetPDFInfoController
-}
+};

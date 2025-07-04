@@ -78,12 +78,12 @@ const Chat = () => {
   const loadDocumentInfo = async () => {
     setLoadingDoc(true);
     setError(null);
-    
+
     try {
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
       console.log('Token found:', !!token);
       console.log('UUID:', uuid);
-      
+
       if (!token) {
         throw new Error('Authentication token not found');
       }
@@ -119,7 +119,7 @@ const Chat = () => {
 
         if (data.success && data.pdf) {
           setDocumentInfo(data.pdf);
-          
+
           // Add welcome message
           const welcomeMessage: Message = {
             id: 'welcome',
@@ -134,18 +134,18 @@ const Chat = () => {
         }
       } else {
         console.error('HTTP error response:', response.status, responseText);
-        
+
         if (response.status === 404) {
           throw new Error(`Document not found (UUID: ${uuid}). Please check if the document exists and you have permission to access it.`);
         }
-        
+
         let errorData = {};
         try {
           errorData = JSON.parse(responseText);
         } catch (e) {
           console.error('Could not parse error response as JSON');
         }
-        
+
         //@ts-ignore
         throw new Error(errorData.message || `Server error: ${response.status} - ${responseText}`);
       }
@@ -290,9 +290,9 @@ const Chat = () => {
                 <ArrowLeft className="h-5 w-5" />
                 <span className="font-medium">Back to Dashboard</span>
               </button>
-              
+
               <div className="h-6 w-px bg-gray-300"></div>
-              
+
               <div className="flex items-center space-x-3">
                 <div className="bg-blue-600 p-2 rounded-lg">
                   <FileText className="h-5 w-5 text-white" />
@@ -307,7 +307,7 @@ const Chat = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <UserProfile />
             </div>
@@ -363,32 +363,29 @@ const Chat = () => {
                   key={message.id}
                   className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`flex items-start space-x-3 max-w-3xl ${
-                    message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}>
-                    {/* Avatar */}
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      message.type === 'user' 
-                        ? 'bg-blue-600' 
-                        : 'bg-gray-600'
+                  <div className={`flex items-start space-x-3 max-w-3xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                     }`}>
+                    {/* Avatar */}
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'user'
+                        ? 'bg-blue-600'
+                        : 'bg-gray-600'
+                      }`}>
                       {message.type === 'user' ? (
                         <User className="h-4 w-4 text-white" />
                       ) : (
                         <Bot className="h-4 w-4 text-white" />
                       )}
                     </div>
-                    
+
                     {/* Message Bubble */}
-                    <div className={`rounded-2xl px-4 py-3 ${
-                      message.type === 'user'
+                    <div className={`rounded-2xl px-4 py-3 ${message.type === 'user'
                         ? 'bg-blue-600 text-white'
                         : 'bg-white text-gray-800 shadow-sm border border-gray-200'
-                    }`}>
+                      }`}>
                       <p className="whitespace-pre-wrap leading-relaxed">
                         {message.content}
                       </p>
-                      
+
                       {/* Metadata for AI responses */}
                       {message.type === 'ai' && message.metadata && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
@@ -402,20 +399,19 @@ const Chat = () => {
                           </div>
                         </div>
                       )}
-                      
-                      <p className={`text-xs mt-2 ${
-                        message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        {message.timestamp.toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+
+                      <p className={`text-xs mt-2 ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                        }`}>
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </p>
                     </div>
                   </div>
                 </div>
               ))}
-              
+
               {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex justify-start">
@@ -433,7 +429,7 @@ const Chat = () => {
                   </div>
                 </div>
               )}
-              
+
               <div ref={messagesEndRef} />
             </div>
 

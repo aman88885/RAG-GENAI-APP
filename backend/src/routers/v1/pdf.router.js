@@ -30,7 +30,7 @@ pdfRouter.delete('/bulk/delete', AuthMiddleware, DeleteMultiplePDFsController);
 pdfRouter.delete('/user/all', AuthMiddleware, DeleteAllUserPDFsController);
 
 // GET /api/v1/pdf/user - Get all PDFs for authenticated user
-pdfRouter.get('/user', AuthMiddleware, GetUserPDFsController);
+pdfRouter.get('/list-pdf', AuthMiddleware, GetUserPDFsController);
 
 // GET /api/v1/pdf/details/:uuid - Get details of a single PDF by UUID
 pdfRouter.get('/details/:uuid', AuthMiddleware, GetPDFDetailsController);
