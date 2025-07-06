@@ -67,7 +67,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:4000/api/v1/pdf/list', {
+      const response = await fetch('http://localhost:4000/api/v1/pdf/list-pdf', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
