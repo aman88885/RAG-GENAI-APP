@@ -20,6 +20,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat/:uuid" element={<Chat />} />
         </Routes>
+      
       </Router>
     </AuthProvider>
   </StrictMode>

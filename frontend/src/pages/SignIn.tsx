@@ -50,25 +50,15 @@ const SignIn = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      // Always try to parse JSON response
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, create a default error object
+        data = { message: 'Invalid response from server' };
+      }
 
-      // if (response.ok) {
-      //   toast({
-      //     title: "Success!",
-      //     description: "You have been signed in successfully.",
-      //   });
-
-      //   // Store user data/token if your backend returns them
-      //   if (data.token) {
-      //     localStorage.setItem('token', data.token);
-      //   }
-      //   if (data.user) {
-      //     localStorage.setItem('user', JSON.stringify(data.user));
-      //   }
-
-      //   // Redirect to dashboard on successful sign in
-      //   navigate('/dashboard');
-      // } 
       if (response.ok) {
         toast({
           title: "Success!",
@@ -87,12 +77,15 @@ const SignIn = () => {
         window.location.href = '/dashboard';
       }
       else {
+        console.error('Sign in failed:', data);
+        const message = data?.message ?? "Incorrect email or password";
         toast({
           title: "Error",
-          description: data.message || "Failed to sign in. Please try again.",
+          description: message,
           variant: "destructive",
         });
       }
+
     } catch (error) {
       toast({
         title: "Error",
@@ -115,7 +108,10 @@ const SignIn = () => {
     }
   };
   return (
+
     <div className="min-h-screen bg-white flex">
+
+
       {/* Left Side - Illustration */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-50 to-blue-100 items-center justify-center p-12">
         <div className="max-w-md text-center">
