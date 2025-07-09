@@ -103,7 +103,7 @@ This will launch the frontend on `http://localhost:5173` by default (or as confi
 ### ✅ 4. Run Backend Server
 From the `backend/` directory:
 ```bash
-npm start
+npm run dev
 ```
 
 Your backend will run on `http://localhost:4000`
