@@ -21,12 +21,56 @@ This is a **full-stack Retrieval-Augmented Generation (RAG)** based application 
   - Generating answers via **Google Gemini LLM**
 - **JWT + bcrypt** – For user authentication and password security  
 - **Joi** – Request validation  
-- **dotenv, cors, uuid, path, fs, http-status** – Utility modules and middleware  
+- **Cloudinary** – PDF file cloud storage  
+- **uuid** – For generating unique document identifiers  
+- **dotenv, cors, path, fs, http-status** – Utility modules and middleware 
 
 ---
 
-## 🖥️ Frontend
+## 🖥️ Frontend Tech Stack
 
-**Frontend is under construction** – built with React.js + TypeScript + Tailwind CSS.
+- **React.js** – Component-based frontend framework  
+- **TypeScript** – Type-safe JavaScript  
+- **Tailwind CSS** – Utility-first CSS framework for modern UI  
+- **React Router** – For routing and navigation  
+- **ShadCN/UI** – For polished and accessible UI components  
+- **Axios** – For making HTTP requests to the backend  
+- **React Hot Toast** – For user notifications  
+- **Lucide Icons** – For modern iconography  
+- **Framer Motion** – For animations and transitions
 
 ---
+
+## ✨ Key Features
+
+- 🔐 **User Authentication** – Secure login/signup using JWT
+- 📄 **Upload PDFs** – Upload documents which are indexed and stored in Cloudinary
+- 🧠 **Chat with Documents** – Ask natural language questions and get context-aware answers
+- 💬 **Real-Time Chat UI** – Seamless conversational interface
+- 📊 **Dashboard View** – See all your uploaded documents with options to chat, delete, or view info
+- 🧾 **Document Metadata** – View page count, upload date, file size, and indexing status
+- 📥 **Upload Guidelines** – Clear UI for supported formats and file limits
+
+---
+
+## Setup .env file
+
+# App Configuration
+PORT=4000
+NODE_ENV=development
+
+# MongoDB
+DEV_MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/RAG-GENAI-APP
+
+# JWT
+JWT_SECRET_KEY=<your_jwt_secret_key>
+
+# Google Gemini API
+GEMINI_API_KEY=<your_gemini_api_key>
+DEV_EMBEDDING_MODEL=gemini-embedding-exp-03-07
+DEV_GENERATIVE_MODEL=gemini-2.0-flash
+
+# Milvus (Vector DB)
+MILVUS_ENDPOINT_ADDRESS=<your_milvus_endpoint>
+MILVUS_TOKEN=<your_milvus_token>
+
