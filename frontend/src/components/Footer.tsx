@@ -24,13 +24,13 @@ const Footer = () => {
 
           {/* Right Side - Navigation Links */}
           <div className="flex flex-wrap items-center space-x-6 text-sm text-gray-600">
-            <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
+            <span onClick={() => scrollToSection('features')} className="hover:text-blue-600 transition-colors cursor-pointer">Features</span>
             <span>•</span>
-            <a href="#workflow" className="hover:text-blue-600 transition-colors">How It Works</a>
+            <span onClick={() => scrollToSection('workflow')} className="cursor-pointer hover:text-blue-600 transition-colors">How It Works</span>
             <span>•</span>
-            <a href="#faqs" className="hover:text-blue-600 transition-colors">FAQs</a>
+            <span onClick={() => scrollToSection('faq')} className="cursor-pointer hover:text-blue-600 transition-colors">FAQs</span>
             <span>•</span>
-            <a href="#contact" className="hover:text-blue-600 transition-colors">Contact</a>
+            <span onClick={() => scrollToSection('contact')} className="cursor-pointer hover:text-blue-600 transition-colors">Contact</span>
           </div>
         </div>
 

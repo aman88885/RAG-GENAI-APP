@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Try to fetch user profile from backend
       try {
-        const response = await fetch('http://localhost:4000/api/v1/auth/profile', {
+        const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/profile', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Try to logout from backend if token exists
     if (token) {
       try {
-        await fetch('http://localhost:4000/api/v1/auth/logout', {
+        await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/logout', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

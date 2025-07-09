@@ -42,7 +42,7 @@ const SignIn = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:4000/api/v1/auth/signin', {
+      const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

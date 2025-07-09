@@ -72,7 +72,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:4000/api/v1/pdf/list-pdf', {
+      const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/pdf/list-pdf', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +110,7 @@ const Dashboard = () => {
         throw new Error('Authentication token not found');
       }
 
-      const response = await fetch(`http://localhost:4000/api/v1/pdf/${deleteModal.document.uuid}`, {
+      const response = await fetch(`https://rag-genai-app-backend.onrender.com/api/v1/pdf/${deleteModal.document.uuid}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -230,7 +230,7 @@ const Dashboard = () => {
       }, 200);
 
       // Step 1: Upload PDF to Cloudinary + Embedding
-      const response = await fetch('http://localhost:4000/api/v1/pdf/upload', {
+      const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/pdf/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

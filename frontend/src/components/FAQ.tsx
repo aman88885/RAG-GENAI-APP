@@ -45,13 +45,12 @@ const FAQ = () => {
             const isOpen = openIndex === index;
             const isTopRow = index < 2;
             const shouldShift = openIndex !== null && openIndex < 2 && !isTopRow;
-            
+
             return (
               <div
                 key={index}
-                className={`bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-500 ease-out cursor-pointer ${
-                  shouldShift ? 'transform translate-y-8' : ''
-                } ${isOpen ? 'shadow-xl ring-2 ring-blue-100' : 'shadow-md'}`}
+                className={`bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-500 ease-out cursor-pointer ${shouldShift ? 'transform translate-y-8' : ''
+                  } ${isOpen ? 'shadow-xl ring-2 ring-blue-100' : 'shadow-md'}`}
                 onClick={() => toggleFAQ(index)}
               >
                 <div className="p-6">
@@ -63,10 +62,9 @@ const FAQ = () => {
                       <ChevronDown className="h-5 w-5 text-gray-500" />
                     </div>
                   </div>
-                  
-                  <div className={`overflow-hidden transition-all duration-500 ease-out ${
-                    isOpen ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
-                  }`}>
+
+                  <div className={`overflow-hidden transition-all duration-500 ease-out ${isOpen ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
+                    }`}>
                     <div className="border-t border-gray-200 pt-4">
                       <p className="text-gray-600 leading-relaxed">
                         {faq.answer}
@@ -83,7 +81,9 @@ const FAQ = () => {
           <p className="text-gray-600 mb-4">
             Still have questions?
           </p>
-          <button className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold hover:shadow-lg transform hover:-translate-y-1">
+          <button
+            onClick={() => window.location.href = 'mailto:hi@amandev.tech'}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold hover:shadow-lg transform hover:-translate-y-1">
             Contact Support
           </button>
         </div>
