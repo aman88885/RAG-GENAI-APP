@@ -53,8 +53,24 @@ This is a **full-stack Retrieval-Augmented Generation (RAG)** based application 
 
 ---
 
-## Setup .env file
+## ⚙️ Project Setup Instructions
 
+### 📁 1. Clone the Repository
+```bash
+git clone https://github.com/aman3255/rag-genai-app.git
+cd rag-genai-app
+```
+
+### 🧠 2. Backend Setup
+```bash
+cd backend
+npm install
+```
+
+#### ✅ Create .env File
+Inside the `/backend` folder, create a `.env` file and add the following:
+
+```env
 # App Configuration
 PORT=4000
 NODE_ENV=development
@@ -73,4 +89,21 @@ DEV_GENERATIVE_MODEL=gemini-2.0-flash
 # Milvus (Vector DB)
 MILVUS_ENDPOINT_ADDRESS=<your_milvus_endpoint>
 MILVUS_TOKEN=<your_milvus_token>
+```
 
+### 💻 3. Frontend Setup
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
+
+This will launch the frontend on `http://localhost:5173` by default (or as configured in `vite.config.ts`).
+
+### ✅ 4. Run Backend Server
+From the `backend/` directory:
+```bash
+npm start
+```
+
+Your backend will run on `http://localhost:4000`
