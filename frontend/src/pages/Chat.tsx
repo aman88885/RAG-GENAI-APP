@@ -439,36 +439,32 @@ const Chat = () => {
             </div>
 
             {/* Message Input */}
-            <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-10">
-
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4">
-                <div className="flex items-end space-x-4">
-                  <div className="flex-1">
-                    <textarea
-                      ref={inputRef}
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Ask a question about your document..."
-                      className="w-full resize-none border-0 focus:ring-0 focus:outline-none text-gray-800 placeholder-gray-500 bg-transparent"
-                      rows={1}
-                      style={{ minHeight: '24px', maxHeight: '120px' }}
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = 'auto';
-                        target.style.height = target.scrollHeight + 'px';
-                      }}
-                    />
-                  </div>
-                  <button
-                    onClick={sendMessage}
-                    disabled={!inputMessage.trim() || isTyping}
-                    className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex-shrink-0"
-                  >
-
-                    <Send className="h-5 w-5" />
-                  </button>
+            <div className="flex-shrink-0 bg-white rounded-2xl shadow-lg border border-gray-200 p-4">
+              <div className="flex items-end space-x-4">
+                <div className="flex-1">
+                  <textarea
+                    ref={inputRef}
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask a question about your document..."
+                    className="w-full resize-none border-0 focus:ring-0 focus:outline-none text-gray-800 placeholder-gray-500 bg-transparent"
+                    rows={1}
+                    style={{ minHeight: '24px', maxHeight: '120px' }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = target.scrollHeight + 'px';
+                    }}
+                  />
                 </div>
+                <button
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isTyping}
+                  className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex-shrink-0"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
               </div>
             </div>
           </div>
