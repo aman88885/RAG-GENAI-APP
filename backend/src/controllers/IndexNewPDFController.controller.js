@@ -136,7 +136,7 @@ const IndexNewPDFController = async (req, res) => {
         const chunks = chunkText(pdfText, 1000, 100);
         // console.log(`📝 Created ${chunks.length} chunks from PDF`);
         // console.log(`🧠 Chunk length: ${chunks}`);
-
+        // console.log(chunks);
 
         // Process chunks and create embeddings
         let successfulChunks = 0;
@@ -146,10 +146,12 @@ const IndexNewPDFController = async (req, res) => {
             const chunk = chunks[index];
 
             const cleanChunk = chunk
-                .replace(/[“”‘’]/g, '"')          // smart quotes
-                .replace(/[•➜→]/g, '-')          // bullet-like symbols
-                .replace(/[^ -~\n]/g, '')         // remove non-printable characters
+                .replace(/[“”‘’]/g, '"')               // Replace smart quotes with "
+                .replace(/[•➜→]/g, '-')               // Replace bullet-like symbols with "-"
+                .replace(/[^\x20-\x7E\n]/g, '')        // Remove non-printable/control chars, retain ASCII
+                .replace(/\s+/g, ' ')                  // Normalize multiple spaces (optional)
                 .trim();
+
             // console.log(cleanChunk);
 
             try {
@@ -168,9 +170,11 @@ const IndexNewPDFController = async (req, res) => {
                 // console.log(`✅ Generated vector embedding for chunk ${index + 1}/${chunks.length}`);
 
                 // Prepare data for Milvus insertion
+                const MAX_VARCHAR_LENGTH = 3000;
+
                 const embeddingData = {
                     vector_embedding: chunk_vector_embedding,
-                    pdf_text: chunk,
+                    pdf_text: chunk.substring(0, MAX_VARCHAR_LENGTH),  // truncate text to max allowed length,
                     pdf_uuid: pdfUuid,
                     pdf_name: pdfFileName,
                     chunk_index: index,
@@ -205,6 +209,7 @@ const IndexNewPDFController = async (req, res) => {
                         setTimeout(() => reject(new Error('Milvus insert timeout after 30s')), 300000)
                     )
                 ]);
+                console.log(milvusResponse);
 
                 successfulChunks = milvusResponse.insert_cnt || 0;
                 console.log(`✅ Successfully inserted ${successfulChunks} chunks into Milvus`);
@@ -260,7 +265,7 @@ const IndexNewPDFController = async (req, res) => {
                 ? "✅ All PDF chunks were successfully indexed."
                 : successfulChunks === 0
                     ? "❌ PDF indexing failed. No chunks were saved."
-                    : `⚠️ Partially indexed: ${successfulChunks} out of ${chunks.length} chunks were successfully indexed.`;
+                    : `Partially indexed: ${successfulChunks} out of ${chunks.length} chunks were successfully indexed.`;
 
 
         res.status(201).json({
