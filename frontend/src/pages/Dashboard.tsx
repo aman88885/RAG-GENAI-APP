@@ -72,7 +72,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/pdf/list-pdf`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/list-pdf`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +110,7 @@ const Dashboard = () => {
         throw new Error('Authentication token not found');
       }
 
-      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/pdf/${deleteModal.document.uuid}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/${deleteModal.document.uuid}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -230,7 +230,7 @@ const Dashboard = () => {
       }, 200);
 
       // Step 1: Upload PDF to Cloudinary + Embedding
-      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/pdf/upload`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Try to fetch user profile from backend
       try {
-        const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/auth/profile`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/auth/profile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Try to logout from backend if token exists
     if (token) {
       try {
-        await fetch(`${import.meta.env.BACKEND_API}/api/v1/auth/logout`, {
+        await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
