@@ -39,7 +39,7 @@ const DocumentInfoCard: React.FC<DocumentInfoCardProps> = ({ uuid, isOpen, onClo
         throw new Error('Authentication token not found');
       }
 
-      const response = await fetch(`https://rag-genai-app-backend.onrender.com/api/v1/pdf/info/${uuid}`, {
+      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/pdf/info/${uuid}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

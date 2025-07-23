@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
-// console.log("HAHAHA")
 
-// for bolt
 const SignUp = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -55,7 +53,7 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/signup', {
+      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

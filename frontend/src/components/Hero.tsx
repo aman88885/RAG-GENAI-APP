@@ -1,5 +1,5 @@
-import React from 'react';
-import { Upload, MessageCircle, FileText, Sparkles,Rocket,MousePointerClick} from 'lucide-react';
+
+import { MessageCircle, FileText, Sparkles, MousePointerClick } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
@@ -17,16 +17,16 @@ const Hero = () => {
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-black mb-6 leading-tight">
             Read Less.
             <span className="animate-text bg-gradient-to-r from-[#1e3a8a] via-[#a5f3fc] to-[#1e3a8a] bg-[length:200%_200%] bg-clip-text text-transparent font-semibold">
-               Know More.</span>
+              Know More.</span>
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-gray-700 mb-12 max-w-4xl mx-auto leading-relaxed">
-          Upload your PDF, ask a question, and get meaningful, AI-powered responses — no scrolling, no searching, just insights.
+            Upload your PDF, ask a question, and get meaningful, AI-powered responses — no scrolling, no searching, just insights.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <button onClick={handleTryClick}
-            className="bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition-all duration-200 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center space-x-2">
+              className="bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition-all duration-200 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center space-x-2">
               <MousePointerClick className="h-5 w-5" />
               <span>Try ChatDoc</span>
             </button>

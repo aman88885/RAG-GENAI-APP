@@ -46,11 +46,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     setIsLoading(true);
-    
+
     try {
       // First try to get token from localStorage
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
-      
+
       if (!token) {
         // Check for demo session
         const demoSession = localStorage.getItem('chatdoc_session');
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Try to fetch user profile from backend
       try {
-        const response = await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/profile', {
+        const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/auth/profile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -79,16 +79,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } else {
             throw new Error('Invalid response format');
           }
+        } else if (response.status === 401) {
+          // Token is invalid/expired - this is expected, don't log as error
+          throw new Error('Token expired');
         } else {
           throw new Error('Failed to fetch profile');
         }
       } catch (backendError) {
-        console.log('Backend not available, checking local storage...');
-        
+
+        if (!(backendError instanceof Error) || !backendError.message.includes('Token expired')) {
+          console.log('Backend not available, checking local storage...');
+        }
         // Fallback to localStorage for demo mode
         const demoSession = localStorage.getItem('chatdoc_session');
         const storedUser = localStorage.getItem('user');
-        
+
         if (demoSession) {
           const sessionData = JSON.parse(demoSession);
           setUser(sessionData.user);
@@ -111,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(userData);
     localStorage.setItem('chatdoc_token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    
+
     // Also store in demo session format for compatibility
     const sessionData = {
       user: userData,
@@ -123,11 +128,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
-    
+
     // Try to logout from backend if token exists
     if (token) {
       try {
-        await fetch('https://rag-genai-app-backend.onrender.com/api/v1/auth/logout', {
+        await fetch(`${import.meta.env.BACKEND_API}/api/v1/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -151,7 +156,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateUser = (userData: User) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
-    
+
     // Update demo session
     const demoSession = localStorage.getItem('chatdoc_session');
     if (demoSession) {

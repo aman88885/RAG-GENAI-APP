@@ -89,7 +89,7 @@ const Chat = () => {
         throw new Error('Authentication token not found');
       }
 
-      const url = `https://rag-genai-app-backend.onrender.com/api/v1/pdf/info/${uuid}`;
+      const url = `${import.meta.env.BACKEND_API}/api/v1/pdf/info/${uuid}`;
       console.log('Fetching document info from:', url);
 
       const response = await fetch(url, {
@@ -179,7 +179,7 @@ const Chat = () => {
       }
 
       // FIX: Use 'query' instead of 'message' to match your backend API
-      const response = await fetch(`https://rag-genai-app-backend.onrender.com/api/v1/pdf/ask/${uuid}`, {
+      const response = await fetch(`${import.meta.env.BACKEND_API}/api/v1/pdf/ask/${uuid}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

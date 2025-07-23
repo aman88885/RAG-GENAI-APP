@@ -19,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/signup" element={<SignUp />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat/:uuid" element={<Chat />} />
+          {/* <Route path="*" element={<div>404 - Page Not Found</div>} /> */}
         </Routes>
       
       </Router>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Upload, MessageSquare, Search, MessagesSquare, FileText, Brain } from 'lucide-react';
 
 const Features = () => {

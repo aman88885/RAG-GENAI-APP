@@ -120,7 +120,7 @@ const IndexNewPDFController = async (req, res) => {
         await pdfRecord.save();
 
         // Validate extracted text
-        if (!pdfText || pdfText.trim().length < 2000) { // minimum 50 characters 
+        if (!pdfText || pdfText.trim().length < 2000) {
             pdfRecord.indexing_status = 'failed';
             pdfRecord.error_message = 'PDF contains insufficient text content';
             await pdfRecord.save();
@@ -134,7 +134,9 @@ const IndexNewPDFController = async (req, res) => {
 
         // Convert text into chunks with overlap
         const chunks = chunkText(pdfText, 1000, 100);
-        console.log(`📝 Created ${chunks.length} chunks from PDF`);
+        // console.log(`📝 Created ${chunks.length} chunks from PDF`);
+        // console.log(`🧠 Chunk length: ${chunks}`);
+
 
         // Process chunks and create embeddings
         let successfulChunks = 0;
@@ -143,14 +145,27 @@ const IndexNewPDFController = async (req, res) => {
         for (let index = 0; index < chunks.length; index++) {
             const chunk = chunks[index];
 
+            const cleanChunk = chunk
+                .replace(/[“”‘’]/g, '"')          // smart quotes
+                .replace(/[•➜→]/g, '-')          // bullet-like symbols
+                .replace(/[^ -~\n]/g, '')         // remove non-printable characters
+                .trim();
+            // console.log(cleanChunk);
+
             try {
                 // Generate vector embedding using Gemini
                 const model = genAI.getGenerativeModel({ model: DEV_EMBEDDING_MODEL });
-                const embeddingResult = await model.embedContent(chunk);
+                const embeddingResult = await model.embedContent(cleanChunk);
+                // console.log(embeddingResult)
+
+                if (!embeddingResult || !embeddingResult.embedding || !embeddingResult.embedding.values?.length) {
+                    throw new Error('⚠️ Empty or invalid embedding from Gemini for chunk ' + index);
+                }
+
                 const chunk_vector_embedding = embeddingResult.embedding.values;
                 // console.log(chunk_vector_embedding)
 
-                console.log(`✅ Generated vector embedding for chunk ${index + 1}/${chunks.length}`);
+                // console.log(`✅ Generated vector embedding for chunk ${index + 1}/${chunks.length}`);
 
                 // Prepare data for Milvus insertion
                 const embeddingData = {
