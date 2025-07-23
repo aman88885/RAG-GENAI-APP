@@ -21,7 +21,7 @@ const Hero = () => {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-700 mb-12 max-w-4xl mx-auto leading-relaxed">
-            Upload your PDF, ask a question, and get meaningful, AI-powered responses — no scrolling, no searching, just insights.
+            Upload your PDF, ask a question, and get meaningful, <span className="font-bold">AI-powered </span>responses — no scrolling, no searching, just insights.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
