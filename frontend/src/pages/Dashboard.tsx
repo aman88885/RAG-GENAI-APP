@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import UserProfile from '../components/UserProfile';
 import DocumentInfoCard from '../components/DocumentInfoCard';
-
+const apiUrl = import.meta.env.VITE_BACKEND_API;
 interface UploadedPDF {
   id: string;
   uuid: string;
@@ -72,7 +72,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('chatdoc_token') || localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/list-pdf`, {
+      const response = await fetch(`${apiUrl}/api/v1/pdf/list-pdf`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +110,7 @@ const Dashboard = () => {
         throw new Error('Authentication token not found');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/${deleteModal.document.uuid}`, {
+      const response = await fetch(`${apiUrl}/api/v1/pdf/${deleteModal.document.uuid}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -230,7 +230,7 @@ const Dashboard = () => {
       }, 200);
 
       // Step 1: Upload PDF to Cloudinary + Embedding
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/upload`, {
+      const response = await fetch(`${apiUrl}/api/v1/pdf/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -734,7 +734,9 @@ const Dashboard = () => {
                 <Ghost className="h-12 w-12 text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold text-gray-700 mb-2">No documents uploaded yet</h3>
-              <p className="text-gray-500">Upload your first PDF to get started with AI-powered conversations</p>
+              <p className="text-gray-500">
+                Upload your first PDF to get started with AI-powered conversations
+              </p>
             </div>
           ) : (
             <div className="relative">
@@ -778,10 +780,10 @@ const Dashboard = () => {
                         onClick={() => handleShowInfo(doc.uuid)}
                         className="text-gray-400 hover:text-blue-500 transition-colors duration-200 p-1 rounded-full hover:bg-blue-50 pr-2"
                         title="View document info"
-                        >
+                      >
                         <Info className="h-4 w-4" />
                       </button>
-                        {/* Delete Button */}
+                      {/* Delete Button */}
                       <button
                         onClick={() => handleDeleteDocument(doc)}
                         className="text-gray-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full hover:bg-red-50"

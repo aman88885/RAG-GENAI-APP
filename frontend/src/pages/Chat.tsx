@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { FileText, Send, ArrowLeft, Loader, User, Bot, AlertCircle, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import UserProfile from '../components/UserProfile';
+const apiUrl = import.meta.env.VITE_BACKEND_API;
 
 interface Message {
   id: string;
@@ -89,7 +90,7 @@ const Chat = () => {
         throw new Error('Authentication token not found');
       }
 
-      const url = `${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/info/${uuid}`;
+      const url = `${apiUrl}/api/v1/pdf/info/${uuid}`;
       console.log('Fetching document info from:', url);
 
       const response = await fetch(url, {
@@ -147,7 +148,7 @@ const Chat = () => {
           console.error('Could not parse error response as JSON');
         }
 
-        //@ts-ignore
+        // @ts-ignore
         throw new Error(errorData.message || `Server error: ${response.status} - ${responseText}`);
       }
     } catch (error) {
@@ -179,7 +180,7 @@ const Chat = () => {
       }
 
       // FIX: Use 'query' instead of 'message' to match your backend API
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/ask/${uuid}`, {
+      const response = await fetch(`${apiUrl}/api/v1/pdf/ask/${uuid}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

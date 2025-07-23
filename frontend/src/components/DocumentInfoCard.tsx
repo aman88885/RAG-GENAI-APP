@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText, Calendar, HardDrive, FileCheck, Cloud, Loader, AlertCircle, ExternalLink } from 'lucide-react';
-
+const apiUrl = import.meta.env.VITE_BACKEND_API;
 interface DocumentInfo {
   uuid: string;
   name: string;
@@ -39,7 +39,7 @@ const DocumentInfoCard: React.FC<DocumentInfoCardProps> = ({ uuid, isOpen, onClo
         throw new Error('Authentication token not found');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/pdf/info/${uuid}`, {
+      const response = await fetch(`${apiUrl}/api/v1/pdf/info/${uuid}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

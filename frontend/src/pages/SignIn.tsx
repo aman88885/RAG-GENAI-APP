@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+
 const SignIn = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -42,7 +43,9 @@ const SignIn = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/v1/auth/signin`, {
+      const apiUrl = import.meta.env.VITE_BACKEND_API;
+      // console.log(`API URL: ${apiUrl}`); // Debugging line to check API URL
+      const response = await fetch(`${apiUrl}/api/v1/auth/signin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
