@@ -92,6 +92,18 @@ MILVUS_TOKEN=<your_milvus_token>
 ```
 
 ### 💻 3. Frontend Setup
+
+#### ✅ Step 1: Create a `.env` File
+
+Inside the `frontend/` directory, create a `.env` file with the following content:
+
+```env
+# App Configuration
+VITE_BACKEND_API=<your_deployed_backend_url> or http://localhost:4000
+```
+
+#### ✅ Step 2: Install Dependencies & Start Frontend
+
 ```bash
 cd ../frontend
 npm install
@@ -101,9 +113,11 @@ npm run dev
 This will launch the frontend on `http://localhost:5173` by default (or as configured in `vite.config.ts`).
 
 ### ✅ 4. Run Backend Server
+
 From the `backend/` directory:
+
 ```bash
 npm run dev
 ```
 
-Your backend will run on `http://localhost:4000`
+Your backend will run on `http://localhost:4000`.
