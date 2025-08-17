@@ -120,23 +120,29 @@ const IndexNewPDFController = async (req, res) => {
         await pdfRecord.save();
 
         // Validate extracted text
-        if (!pdfText || pdfText.trim().length < 2000) {
+        if (!pdfText || pdfText.trim().length < 100) {
             pdfRecord.indexing_status = 'failed';
             pdfRecord.error_message = 'PDF contains insufficient text content';
             await pdfRecord.save();
 
             return res.status(400).json({
                 success: false,
-                message: "PDF contains insufficient text content for indexing.",
+                message: "PDF contains insufficient text content for indexing. Please ensure the PDF contains readable text.",
                 pdf_id: pdfRecord._id
             });
         }
 
+        // Log text extraction info for debugging
+        console.log(`📄 Extracted ${pdfText.length} characters from PDF`);
+        console.log(`📄 Text preview: ${pdfText.substring(0, 200)}...`);
+
         // Convert text into chunks with overlap
         const chunks = chunkText(pdfText, 1000, 100);
-        // console.log(`📝 Created ${chunks.length} chunks from PDF`);
-        // console.log(`🧠 Chunk length: ${chunks}`);
-        // console.log(chunks);
+        console.log(`📝 Created ${chunks.length} chunks from PDF`);
+        
+        if (chunks.length === 0) {
+            throw new Error('No valid chunks created from PDF text');
+        }
 
         // Process chunks and create embeddings
         let successfulChunks = 0;
@@ -144,37 +150,41 @@ const IndexNewPDFController = async (req, res) => {
 
         for (let index = 0; index < chunks.length; index++) {
             const chunk = chunks[index];
+            console.log(`🔄 Processing chunk ${index + 1}/${chunks.length} (${chunk.length} characters)`);
 
             const cleanChunk = chunk
-                .replace(/[“”‘’]/g, '"')               // Replace smart quotes with "
-                .replace(/[•➜→]/g, '-')               // Replace bullet-like symbols with "-"
+                .replace(/[""'']/g, '"')               // Replace smart quotes with "
+                .replace(/[•➜→]/g, '-')               // Replace bullet-like symbols with "-"
                 .replace(/[^\x20-\x7E\n]/g, '')        // Remove non-printable/control chars, retain ASCII
                 .replace(/\s+/g, ' ')                  // Normalize multiple spaces (optional)
                 .trim();
 
-            // console.log(cleanChunk);
+            // Skip empty or very short chunks
+            if (!cleanChunk || cleanChunk.length < 10) {
+                console.log(`⚠️ Skipping chunk ${index + 1} - too short (${cleanChunk.length} characters)`);
+                continue;
+            }
 
             try {
+                console.log(`🧠 Generating embedding for chunk ${index + 1}...`);
+                
                 // Generate vector embedding using Gemini
                 const model = genAI.getGenerativeModel({ model: DEV_EMBEDDING_MODEL });
                 const embeddingResult = await model.embedContent(cleanChunk);
-                // console.log(embeddingResult)
 
                 if (!embeddingResult || !embeddingResult.embedding || !embeddingResult.embedding.values?.length) {
-                    throw new Error('⚠️ Empty or invalid embedding from Gemini for chunk ' + index);
+                    throw new Error('Empty or invalid embedding from Gemini for chunk ' + index);
                 }
 
                 const chunk_vector_embedding = embeddingResult.embedding.values;
-                // console.log(chunk_vector_embedding)
-
-                // console.log(`✅ Generated vector embedding for chunk ${index + 1}/${chunks.length}`);
+                console.log(`✅ Generated vector embedding for chunk ${index + 1}/${chunks.length} (${chunk_vector_embedding.length} dimensions)`);
 
                 // Prepare data for Milvus insertion
                 const MAX_VARCHAR_LENGTH = 3000;
 
                 const embeddingData = {
                     vector_embedding: chunk_vector_embedding,
-                    pdf_text: chunk.substring(0, MAX_VARCHAR_LENGTH),  // truncate text to max allowed length,
+                    pdf_text: cleanChunk.substring(0, MAX_VARCHAR_LENGTH),  // truncate text to max allowed length
                     pdf_uuid: pdfUuid,
                     pdf_name: pdfFileName,
                     chunk_index: index,
@@ -182,21 +192,26 @@ const IndexNewPDFController = async (req, res) => {
                     created_at: new Date().toISOString(),
                     cloudinary_url: cloudinaryUploadResult.url
                 };
-                // console.log(embeddingData)
 
                 embeddings.push(embeddingData);
 
             } catch (err) {
                 console.error(`❌ Error generating embedding for chunk ${index + 1}:`, err.message);
+                console.error(`Chunk content (first 100 chars): ${cleanChunk.substring(0, 100)}...`);
                 continue;
             }
         }
 
+        console.log(`📊 Generated ${embeddings.length} embeddings out of ${chunks.length} chunks`);
+
         // Batch insert into Milvus (more efficient)
         if (embeddings.length > 0) {
             try {
+                console.log(`🗄️ Attempting to insert ${embeddings.length} embeddings into Milvus...`);
+                
                 // Best solution - combine timeout + connection check
                 if (!milvusClient.connected) {
+                    console.log('🔌 Connecting to Milvus...');
                     milvusClient.connect();
                 }
 
@@ -209,7 +224,7 @@ const IndexNewPDFController = async (req, res) => {
                         setTimeout(() => reject(new Error('Milvus insert timeout after 30s')), 300000)
                     )
                 ]);
-                console.log(milvusResponse);
+                console.log('📊 Milvus response:', milvusResponse);
 
                 successfulChunks = milvusResponse.insert_cnt || 0;
                 console.log(`✅ Successfully inserted ${successfulChunks} chunks into Milvus`);
@@ -218,18 +233,23 @@ const IndexNewPDFController = async (req, res) => {
                 console.error('❌ Milvus batch insert failed:', milvusError);
 
                 // Try individual inserts as fallback
-                for (const embedding of embeddings) {
+                console.log('🔄 Attempting individual inserts as fallback...');
+                for (let i = 0; i < embeddings.length; i++) {
                     try {
+                        console.log(`📝 Inserting individual chunk ${i + 1}/${embeddings.length}...`);
                         await milvusClient.insert({
                             collection_name: "RAG_TEXT_EMBEDDING",
-                            data: [embedding]
+                            data: [embeddings[i]]
                         });
                         successfulChunks++;
+                        console.log(`✅ Individual chunk ${i + 1} inserted successfully`);
                     } catch (err) {
-                        console.error(`❌ Individual insert failed for chunk:`, err.message);
+                        console.error(`❌ Individual insert failed for chunk ${i + 1}:`, err.message);
                     }
                 }
             }
+        } else {
+            console.log('⚠️ No embeddings to insert into Milvus');
         }
 
 

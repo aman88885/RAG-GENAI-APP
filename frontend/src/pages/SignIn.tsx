@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -66,20 +68,30 @@ const SignIn = () => {
           description: "You have been signed in successfully.",
         });
 
-        // Store authentication data
-        if (data.token) {
-          localStorage.setItem('chatdoc_token', data.token);
-          localStorage.setItem('token', data.token); // Keep both for compatibility
-        }
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
+        // Use AuthContext login function to properly set authentication state
+        if (data.data?.token && data.data?.user) {
+          login(data.data.user, data.data.token);
         }
 
         // Navigate to dashboard
         navigate('/dashboard');
       } else {
         console.error('Sign in failed:', data);
-        const message = data?.message || data?.error || "Invalid email or password";
+        console.log('Response status:', response.status);
+        console.log('Response data:', data);
+        
+        // Handle specific error cases
+        let message = "Invalid email or password";
+        if (data?.message) {
+          message = data.message;
+        } else if (response.status === 401) {
+          message = "Invalid email or password";
+        } else if (response.status === 400) {
+          message = data?.message || "Invalid input data";
+        } else if (response.status === 500) {
+          message = "Server error. Please try again later.";
+        }
+        
         toast({
           title: "Error",
           description: message,
@@ -167,11 +179,7 @@ const SignIn = () => {
             <p className="text-gray-600">Sign in to your account to continue</p>
           </div>
 
-          {/* Demo Notice */}
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm mb-6">
-            <p className="font-medium">Demo Mode</p>
-            <p>Create an account first by clicking "Sign Up" below, then return to sign in.</p>
-          </div>
+
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
