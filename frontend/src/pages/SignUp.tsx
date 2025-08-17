@@ -98,6 +98,10 @@ const SignUp = () => {
           message = "User with this email already exists";
         } else if (response.status === 400) {
           message = data?.message || "Invalid input data";
+        } else if (response.status === 405) {
+          message = "Server endpoint not found. Please check if the backend is running.";
+        } else if (response.status === 404) {
+          message = "Server endpoint not found. Please check the API configuration.";
         } else if (response.status === 500) {
           message = "Server error. Please try again later.";
         }
