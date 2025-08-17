@@ -59,6 +59,7 @@ const SignIn = () => {
         data = await response.json();
       } catch (jsonError) {
         // If JSON parsing fails, create a default error object
+        console.error('JSON parsing error:', jsonError);
         data = { message: 'Invalid response from server' };
       }
 
@@ -81,7 +82,8 @@ const SignIn = () => {
       }
       else {
         console.error('Sign in failed:', data);
-        const message = data?.message ?? "Incorrect email or password";
+        // Extract error message from backend response
+        const message = data?.message || data?.error || "Invalid email or password";
         toast({
           title: "Error",
           description: message,
@@ -90,12 +92,12 @@ const SignIn = () => {
       }
 
     } catch (error) {
+      console.error('Sign in error:', error);
       toast({
         title: "Error",
         description: "Unable to connect to server. Please try again.",
         variant: "destructive",
       });
-      console.error('Sign in error:', error);
     } finally {
       setIsLoading(false);
     }

@@ -64,25 +64,7 @@ const SignUp = () => {
 
       const data = await response.json();
 
-      // if (response.ok) {
-      //   toast({
-      //     title: "Success!",
-      //     description: "Your account has been created successfully.",
-      //   });
 
-      //   // Store user data/token if your backend returns them
-      //   if (data.token) {
-      //     localStorage.setItem('token', data.token);
-      //   }
-      //   if (data.user) {
-      //     localStorage.setItem('user', JSON.stringify(data.user));
-      //   }
-
-      //   // window.location.reload();
-
-      //   // Redirect to dashboard on successful sign up
-      //   navigate('/dashboard');
-      // } 
       if (response.ok) {
         toast({
           title: "Success!",
