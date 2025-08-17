@@ -16,6 +16,11 @@ const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Debug: Log environment variables
+  console.log('Environment check:');
+  console.log('VITE_BACKEND_API:', import.meta.env.VITE_BACKEND_API);
+  console.log('All env vars:', import.meta.env);
+
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
@@ -46,8 +51,20 @@ const SignIn = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_BACKEND_API;
-      console.log('API URL:', apiUrl);
-      const response = await fetch(`${apiUrl}/api/v1/auth/signin`, {
+      
+      // Enhanced debugging
+      console.log('API URL from env:', apiUrl);
+      console.log('Full URL will be:', `${apiUrl}/api/v1/auth/signin`);
+      
+      // Check if apiUrl is undefined or empty
+      if (!apiUrl) {
+        throw new Error('Backend API URL is not configured. Please check your .env file.');
+      }
+
+      const fullUrl = `${apiUrl}/api/v1/auth/signin`;
+      console.log('Making request to:', fullUrl);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,12 +72,26 @@ const SignIn = () => {
         body: JSON.stringify(formData),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        data = { message: 'Invalid response from server' };
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          const responseText = await response.text();
+          console.log('Response text:', responseText);
+          data = { message: 'Invalid response from server' };
+        }
+      } else {
+        // Handle non-JSON responses
+        const responseText = await response.text();
+        console.log('Non-JSON response:', responseText);
+        data = { message: 'Server returned non-JSON response' };
       }
 
       if (response.ok && data.success) {
@@ -90,11 +121,13 @@ const SignIn = () => {
         } else if (response.status === 400) {
           message = data?.message || "Invalid input data";
         } else if (response.status === 405) {
-          message = "Server endpoint not found. Please check if the backend is running.";
+          message = "Server endpoint not found or method not allowed. Please check if the backend is running and the endpoint exists.";
         } else if (response.status === 404) {
           message = "Server endpoint not found. Please check the API configuration.";
         } else if (response.status === 500) {
           message = "Server error. Please try again later.";
+        } else if (response.status === 0) {
+          message = "Network error. Please check your internet connection.";
         }
         
         toast({
@@ -106,9 +139,15 @@ const SignIn = () => {
 
     } catch (error) {
       console.error('Sign in error:', error);
+      
+      let message = "Unable to connect to server. Please try again.";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Unable to connect to server. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -183,8 +222,6 @@ const SignIn = () => {
             <h1 className="text-3xl font-bold text-black mb-2">Welcome back</h1>
             <p className="text-gray-600">Sign in to your account to continue</p>
           </div>
-
-
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
