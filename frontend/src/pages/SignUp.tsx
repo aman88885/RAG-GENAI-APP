@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -76,20 +78,30 @@ const SignUp = () => {
           description: "Your account has been created successfully.",
         });
 
-        // Store authentication data
-        if (data.token) {
-          localStorage.setItem('chatdoc_token', data.token);
-          localStorage.setItem('token', data.token); // Keep both for compatibility
-        }
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
+        // Use AuthContext login function to properly set authentication state
+        if (data.data?.token && data.data?.user) {
+          login(data.data.user, data.data.token);
         }
 
         // Navigate to dashboard
         navigate('/dashboard');
       } else {
         console.error('Sign up failed:', data);
-        const message = data?.message || data?.error || "Failed to create account. Please try again.";
+        console.log('Response status:', response.status);
+        console.log('Response data:', data);
+        
+        // Handle specific error cases
+        let message = "Failed to create account. Please try again.";
+        if (data?.message) {
+          message = data.message;
+        } else if (response.status === 409) {
+          message = "User with this email already exists";
+        } else if (response.status === 400) {
+          message = data?.message || "Invalid input data";
+        } else if (response.status === 500) {
+          message = "Server error. Please try again later.";
+        }
+        
         toast({
           title: "Error",
           description: message,
