@@ -46,6 +46,7 @@ const SignIn = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_BACKEND_API;
+      // console.log('API URL:', apiUrl);
       const response = await fetch(`${apiUrl}/api/v1/auth/signin`, {
         method: 'POST',
         headers: {
