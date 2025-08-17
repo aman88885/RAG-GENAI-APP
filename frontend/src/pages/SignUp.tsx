@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
+import { FileText, Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 
 const SignUp = () => {
@@ -13,7 +13,7 @@ const SignUp = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast(); // Add this line - it was missing!
+  const { toast } = useToast();
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -62,40 +62,47 @@ const SignUp = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('JSON parsing error:', jsonError);
+        data = { message: 'Invalid response from server' };
+      }
 
-
-      if (response.ok) {
+      if (response.ok && data.success) {
         toast({
           title: "Success!",
           description: "Your account has been created successfully.",
         });
-      
-        // Store user data/token if your backend returns them
+
+        // Store authentication data
         if (data.token) {
-          localStorage.setItem('token', data.token);
+          localStorage.setItem('chatdoc_token', data.token);
+          localStorage.setItem('token', data.token); // Keep both for compatibility
         }
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
         }
-      
-        // Force a full page navigation to ensure auth state is reinitialized
-        window.location.href = '/dashboard';
-      }
-      else {
+
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else {
+        console.error('Sign up failed:', data);
+        const message = data?.message || data?.error || "Failed to create account. Please try again.";
         toast({
           title: "Error",
-          description: data.message || "Failed to create account. Please try again.",
+          description: message,
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error('Sign up error:', error);
       toast({
         title: "Error",
         description: "Unable to connect to server. Please try again.",
         variant: "destructive",
       });
-      console.error('Sign up error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +117,7 @@ const SignUp = () => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
+
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Side - Illustration */}
@@ -196,8 +204,9 @@ const SignUp = () => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                    }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
+                    errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  }`}
                   placeholder="Enter your full name"
                 />
               </div>
@@ -221,8 +230,9 @@ const SignUp = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                    }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
+                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -246,8 +256,9 @@ const SignUp = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                    }`}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
+                    errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  }`}
                   placeholder="Create a password"
                 />
                 <button

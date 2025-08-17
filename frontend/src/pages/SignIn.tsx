@@ -12,7 +12,7 @@ const SignIn = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast(); // Add this line - it was missing!
+  const { toast } = useToast();
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -44,7 +44,6 @@ const SignIn = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_BACKEND_API;
-      // console.log(`API URL: ${apiUrl}`); // Debugging line to check API URL
       const response = await fetch(`${apiUrl}/api/v1/auth/signin`, {
         method: 'POST',
         headers: {
@@ -53,36 +52,33 @@ const SignIn = () => {
         body: JSON.stringify(formData),
       });
 
-      // Always try to parse JSON response
       let data;
       try {
         data = await response.json();
       } catch (jsonError) {
-        // If JSON parsing fails, create a default error object
         console.error('JSON parsing error:', jsonError);
         data = { message: 'Invalid response from server' };
       }
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         toast({
           title: "Success!",
           description: "You have been signed in successfully.",
         });
 
-        // Store user data/token if your backend returns them
+        // Store authentication data
         if (data.token) {
-          localStorage.setItem('token', data.token);
+          localStorage.setItem('chatdoc_token', data.token);
+          localStorage.setItem('token', data.token); // Keep both for compatibility
         }
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
         }
 
-        // Force a full page navigation to ensure auth state is reinitialized
-        window.location.href = '/dashboard';
-      }
-      else {
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else {
         console.error('Sign in failed:', data);
-        // Extract error message from backend response
         const message = data?.message || data?.error || "Invalid email or password";
         toast({
           title: "Error",
@@ -112,11 +108,9 @@ const SignIn = () => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
+
   return (
-
     <div className="min-h-screen bg-white flex">
-
-
       {/* Left Side - Illustration */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-50 to-blue-100 items-center justify-center p-12">
         <div className="max-w-md text-center">
@@ -202,8 +196,9 @@ const SignIn = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                    }`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
+                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -227,8 +222,9 @@ const SignIn = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
-                    }`}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 ${
+                    errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  }`}
                   placeholder="Enter your password"
                 />
                 <button
