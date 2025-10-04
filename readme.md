@@ -2,6 +2,7 @@
 
 This is a **full-stack Retrieval-Augmented Generation (RAG)** based application that enables users to upload PDF documents and interact with their contents using natural language. The system retrieves relevant information from document embeddings and generates context-aware answers using **Google Gemini LLM**.
 
+Document : https://drive.google.com/file/d/1SdIrIUiQYxXBNETfiok1r7LrZ6xS0j2u/view?usp=sharing
 ## 🚀 Workflow
 
 <img width="957" alt="Screenshot 2025-03-25 at 2 00 20 AM" src="https://github.com/user-attachments/assets/278d4ee1-115d-4564-8955-19bcca4daee3" />
